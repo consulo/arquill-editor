@@ -1,0 +1,3 @@
+.consulo/
+node_modules/
+dist/
