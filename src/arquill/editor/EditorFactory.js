@@ -94,6 +94,12 @@ function merge(obj1, obj2)
 }
 
 /**    @private */
+function getHeight(node)
+{
+	return node.clientHeight;
+}
+
+/**    @private */
 function mergeOptions(parent, defaultOptions)
 {
 	var options = {};
