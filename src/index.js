@@ -1,7 +1,9 @@
-import EditorFactory from 'arquill/editor/EditorFactory'
+import createEditor from 'arquill/editor/EditorFactory'
+import * as mEditor from "orion/editor/editor";
 import 'orion/editor/themes/default.css';
 
-var editor = new EditorFactory({
-	parent: "editor-body",
-	contentType: "js"
-});
+(function() {
+	window.arquillEditor = {
+		createEditor : createEditor
+	}
+})()

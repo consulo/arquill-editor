@@ -23,6 +23,9 @@
 				margin: 0px;
 			}
 		</style>
+
+		<script src="arquillEditor.js"></script>
+		<link rel="stylesheet" href="arquillEditor.css">
 	</head>
 	<body>
 
@@ -443,7 +446,9 @@
 }));
 		</pre>
 
-		<script src="main.js"></script>
-
+		<script>
+			
+			var editor = arquillEditor.createEditor({ parent: "editor-body" });
+		</script>
 	</body>
 </html>

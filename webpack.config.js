@@ -1,4 +1,5 @@
 var path = require('path');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
 	devServer: {
@@ -19,8 +20,9 @@ module.exports = {
 		hints : false
 	},
 	output: {
-		filename: '[name].js',
+		filename: 'arquillEditor.js',
 	},
+	entry:  './src/index.js',
 	module: {
 		rules: [
 			{
@@ -35,8 +37,13 @@ module.exports = {
 			},
 			{
 				test: /\.css$/i,
-				use: ["style-loader", "css-loader"],
+				use: [MiniCssExtractPlugin.loader, "css-loader"],
 			}
 		]
 	},
+	plugins: [
+		new MiniCssExtractPlugin({
+			filename: 'arquillEditor.css'
+		})
+	],
 };

@@ -121,240 +121,158 @@ function mergeOptions(parent, defaultOptions)
 	return options;
 }
 
-export default class EditorFactory
+export default function createEditor(options)
 {
-	constructor(options)
+	var doc = options.document || document;
+	var parent = options.parent;
+	if(!parent)
 	{
-		var doc = options.document || document;
-		var parent = options.parent;
-		if(!parent)
-		{
-			parent = "editor";
-		} //$NON-NLS-0$
-		if(typeof(parent) === "string")
-		{ //$NON-NLS-0$
-			parent = doc.getElementById(parent);
-		}
-		if(!parent)
-		{
-			if(options.className)
-			{
-				var parents = getParents(doc, options.className);
-				if(parents)
-				{
-					options.className = undefined;
-					// Do not focus editors by default when creating multiple editors
-					if(parents.length > 1 && options.noFocus === undefined)
-					{
-						options.noFocus = true;
-					}
-					var editors = [];
-					for(var i = parents.length - 1; i >= 0; i--)
-					{
-						options.parent = parents[i];
-						editors.push(edit(options));
-					}
-					return editors;
-				}
-			}
-		}
-		if(!parent)
-		{
-			throw new Error("no parent");
-		} //$NON-NLS-0$
-		options = mergeOptions(parent, options);
-
-		if(typeof options.theme === "string")
-		{ //$NON-NLS-0$
-			var theme = mTextTheme.TextTheme.getTheme(options.theme);
-			var index = options.theme.lastIndexOf("/"); //$NON-NLS-0$
-			var themeClass = options.theme;
-			if(index !== -1)
-			{
-				themeClass = themeClass.substring(index + 1);
-			}
-			var extension = ".css"; //$NON-NLS-0$
-			if(themeClass.substring(themeClass.length - extension.length) === extension)
-			{
-				themeClass = themeClass.substring(0, themeClass.length - extension.length);
-			}
-			theme.setThemeClass(themeClass, {href: options.theme});
-			options.theme = theme;
-		}
-		var textViewFactory = function()
-		{
-			return new mTextView.TextView({
-				parent: parent,
-				model: new mProjModel.ProjectionTextModel(options.model ? options.model : new mTextModel.TextModel("")),
-				tabSize: options.tabSize ? options.tabSize : 4,
-				readonly: options.readonly,
-				fullSelection: options.fullSelection,
-				tabMode: options.tabMode,
-				expandTab: options.expandTab,
-				singleMode: options.singleMode,
-				themeClass: options.themeClass,
-				theme: options.theme,
-				wrapMode: options.wrapMode,
-				wrappable: options.wrappable
-			});
-		};
-
-		var contentAssist, contentAssistFactory;
-		if(!options.readonly)
-		{
-			contentAssistFactory = {
-				createContentAssistMode: function(editor)
-				{
-					contentAssist = new mContentAssist.ContentAssist(editor.getTextView());
-					var contentAssistWidget = new mContentAssist.ContentAssistWidget(contentAssist);
-					var result = new mContentAssist.ContentAssistMode(contentAssist, contentAssistWidget);
-					contentAssist.setMode(result);
-					return result;
-				}
-			};
-		}
-
-		var syntaxHighlighter = {
-			styler: null,
-
-			highlight: function(contentType, grammarProvider, editor)
-			{
-				if(this.styler && this.styler.destroy)
-				{
-					this.styler.destroy();
-				}
-				this.styler = null;
-
-				/* to maintain backwards-compatibility convert previously-supported lang values to types */
-				if(contentType === "js")
-				{ //$NON-NLS-0$
-					contentType = "application/javascript"; //$NON-NLS-0$
-				}
-				else if(contentType === "css")
-				{ //$NON-NLS-0$
-					contentType = "text/css"; //$NON-NLS-0$
-				}
-				else if(contentType === "html")
-				{ //$NON-NLS-0$
-					contentType = "text/html"; //$NON-NLS-0$
-				}
-				else if(contentType === "java")
-				{ //$NON-NLS-0$
-					contentType = "text/x-java-source"; //$NON-NLS-0$
-				}
-
-				var textView = editor.getTextView();
-				var annotationModel = editor.getAnnotationModel();
-				var loadGrammar = function(contentType)
-				{
-					/* attempt to locate an included file containing the grammar for contentType */
-					var folderName = contentType.replace(/[*|:/".<>?+]/g, '_');
-					require(["../../orion/editor/stylers/" + folderName + "/syntax"], //$NON-NLS-1$ //$NON-NLS-0$
-							function(grammar)
-							{
-								var stylerAdapter = new mTextStyler.createPatternBasedAdapter(grammar.grammars, grammar.id, contentType);
-								this.styler = new mTextStyler.TextStyler(textView, annotationModel, stylerAdapter);
-							}, /* @callback */ function(error)
-					{
-						/*
-						 * A grammar file was not found for the specified contentType, so syntax styling will
-						 * not be shown (the editor will still work fine otherwise).  requireJS has already
-						 * written an error message to the console regarding the missing grammar file.
-						 */
-					});
-				};
-
-				if(contentType)
-				{
-					if(grammarProvider && (typeof grammarProvider === "function"))
-					{ //$NON-NLS-0$
-						grammarProvider(contentType).then(function(result)
-						{
-							if(result && result.grammars && result.id)
-							{
-								var stylerAdapter = new mTextStyler.createPatternBasedAdapter(result.grammars, result.id, contentType);
-								this.styler = new mTextStyler.TextStyler(textView, annotationModel, stylerAdapter);
-							}
-						}.bind(this), /* @callback */ function(error)
-						{
-							loadGrammar(contentType);
-							/* fall back to default grammar file lookup */
-						});
-					}
-					else
-					{
-						loadGrammar(contentType);
-					}
-				}
-				if(contentType === "text/css")
-				{ //$NON-NLS-0$
-					editor.setFoldingRulerVisible(options.showFoldingRuler === undefined || options.showFoldingRuler);
-				}
-			}
-		};
-
-		var editor = new mEditor.Editor({
-			textViewFactory: textViewFactory,
-			undoStackFactory: new mEditorFeatures.UndoFactory(),
-			annotationFactory: new mEditorFeatures.AnnotationFactory(),
-			lineNumberRulerFactory: new mEditorFeatures.LineNumberRulerFactory(),
-			foldingRulerFactory: new mEditorFeatures.FoldingRulerFactory(),
-			textDNDFactory: new mEditorFeatures.TextDNDFactory(),
-			contentAssistFactory: contentAssistFactory,
-			keyBindingFactory: new mEditorFeatures.KeyBindingsFactory(),
-			statusReporter: options.statusReporter,
-			hoverFactory: options.hoverFactory,
-			domNode: parent
-		});
-		editor.addEventListener("TextViewInstalled", function()
-		{ //$NON-NLS-0$
-			var ruler = editor.getLineNumberRuler();
-			if(ruler && options.firstLineIndex !== undefined)
-			{
-				ruler.setFirstLine(options.firstLineIndex);
-			}
-			var sourceCodeActions = editor.getSourceCodeActions();
-			if(sourceCodeActions)
-			{
-				sourceCodeActions.setAutoPairParentheses(options.autoPairParentheses);
-				sourceCodeActions.setAutoPairBraces(options.autoPairBraces);
-				sourceCodeActions.setAutoPairSquareBrackets(options.autoPairSquareBrackets);
-				sourceCodeActions.setAutoPairAngleBrackets(options.autoPairAngleBrackets);
-				sourceCodeActions.setAutoPairQuotations(options.autoPairQuotations);
-				sourceCodeActions.setAutoCompleteComments(options.autoCompleteComments);
-				sourceCodeActions.setSmartIndentation(options.smartIndentation);
-			}
-		});
-
-		var contents = options.contents;
-		if(contents === undefined)
-		{
-			contents = getTextFromElement(parent);
-		}
-		if(!contents)
-		{
-			contents = "";
-		}
-
-		editor.installTextView();
-		editor.setLineNumberRulerVisible(options.showLinesRuler === undefined || options.showLinesRuler);
-		editor.setAnnotationRulerVisible(options.showAnnotationRuler === undefined || options.showFoldingRuler);
-		editor.setOverviewRulerVisible(options.showOverviewRuler === undefined || options.showOverviewRuler);
-		editor.setZoomRulerVisible(options.showZoomRuler === undefined || options.showZoomRuler);
-		editor.setFoldingRulerVisible(options.showFoldingRuler === undefined || options.showFoldingRuler);
-		editor.setInput(options.title, null, contents, false, options.noFocus);
-
-		syntaxHighlighter.highlight(options.contentType || options.lang, options.grammarProvider, editor);
-		/*
-		 * The minimum height of the editor is 50px. Do not compute size if the editor is not
-		 * attached to the DOM or it is display=none.
-		 */
-		var window = doc.defaultView || doc.parentWindow;
-		if(!options.noComputeSize && getDisplay(window, doc, parent) !== "none" && getHeight(parent) <= 50)
-		{ //$NON-NLS-0$
-			var height = editor.getTextView().computeSize().height;
-			parent.style.height = height + "px"; //$NON-NLS-0$
-		}
-		return editor;
+		parent = "editor";
+	} //$NON-NLS-0$
+	if(typeof(parent) === "string")
+	{ //$NON-NLS-0$
+		parent = doc.getElementById(parent);
 	}
+	if(!parent)
+	{
+		if(options.className)
+		{
+			var parents = getParents(doc, options.className);
+			if(parents)
+			{
+				options.className = undefined;
+				// Do not focus editors by default when creating multiple editors
+				if(parents.length > 1 && options.noFocus === undefined)
+				{
+					options.noFocus = true;
+				}
+				var editors = [];
+				for(var i = parents.length - 1; i >= 0; i--)
+				{
+					options.parent = parents[i];
+					editors.push(edit(options));
+				}
+				return editors;
+			}
+		}
+	}
+	if(!parent)
+	{
+		throw new Error("no parent");
+	} //$NON-NLS-0$
+	options = mergeOptions(parent, options);
+
+	if(typeof options.theme === "string")
+	{ //$NON-NLS-0$
+		var theme = mTextTheme.TextTheme.getTheme(options.theme);
+		var index = options.theme.lastIndexOf("/"); //$NON-NLS-0$
+		var themeClass = options.theme;
+		if(index !== -1)
+		{
+			themeClass = themeClass.substring(index + 1);
+		}
+		var extension = ".css"; //$NON-NLS-0$
+		if(themeClass.substring(themeClass.length - extension.length) === extension)
+		{
+			themeClass = themeClass.substring(0, themeClass.length - extension.length);
+		}
+		theme.setThemeClass(themeClass, {href: options.theme});
+		options.theme = theme;
+	}
+	var textViewFactory = function()
+	{
+		return new mTextView.TextView({
+			parent: parent,
+			model: new mProjModel.ProjectionTextModel(options.model ? options.model : new mTextModel.TextModel("")),
+			tabSize: options.tabSize ? options.tabSize : 4,
+			readonly: options.readonly,
+			fullSelection: options.fullSelection,
+			tabMode: options.tabMode,
+			expandTab: options.expandTab,
+			singleMode: options.singleMode,
+			themeClass: options.themeClass,
+			theme: options.theme,
+			wrapMode: options.wrapMode,
+			wrappable: options.wrappable
+		});
+	};
+
+	var contentAssist, contentAssistFactory;
+	if(!options.readonly)
+	{
+		contentAssistFactory = {
+			createContentAssistMode: function(editor)
+			{
+				contentAssist = new mContentAssist.ContentAssist(editor.getTextView());
+				var contentAssistWidget = new mContentAssist.ContentAssistWidget(contentAssist);
+				var result = new mContentAssist.ContentAssistMode(contentAssist, contentAssistWidget);
+				contentAssist.setMode(result);
+				return result;
+			}
+		};
+	}
+
+	var editor = new mEditor.Editor({
+		textViewFactory: textViewFactory,
+		undoStackFactory: new mEditorFeatures.UndoFactory(),
+		annotationFactory: new mEditorFeatures.AnnotationFactory(),
+		lineNumberRulerFactory: new mEditorFeatures.LineNumberRulerFactory(),
+		foldingRulerFactory: new mEditorFeatures.FoldingRulerFactory(),
+		textDNDFactory: new mEditorFeatures.TextDNDFactory(),
+		contentAssistFactory: contentAssistFactory,
+		keyBindingFactory: new mEditorFeatures.KeyBindingsFactory(),
+		statusReporter: options.statusReporter,
+		hoverFactory: options.hoverFactory,
+		domNode: parent
+	});
+	editor.addEventListener("TextViewInstalled", function()
+	{ //$NON-NLS-0$
+		var ruler = editor.getLineNumberRuler();
+		if(ruler && options.firstLineIndex !== undefined)
+		{
+			ruler.setFirstLine(options.firstLineIndex);
+		}
+		var sourceCodeActions = editor.getSourceCodeActions();
+		if(sourceCodeActions)
+		{
+			sourceCodeActions.setAutoPairParentheses(options.autoPairParentheses);
+			sourceCodeActions.setAutoPairBraces(options.autoPairBraces);
+			sourceCodeActions.setAutoPairSquareBrackets(options.autoPairSquareBrackets);
+			sourceCodeActions.setAutoPairAngleBrackets(options.autoPairAngleBrackets);
+			sourceCodeActions.setAutoPairQuotations(options.autoPairQuotations);
+			sourceCodeActions.setAutoCompleteComments(options.autoCompleteComments);
+			sourceCodeActions.setSmartIndentation(options.smartIndentation);
+		}
+	});
+
+	var contents = options.contents;
+	if(contents === undefined)
+	{
+		contents = getTextFromElement(parent);
+	}
+
+	if(!contents)
+	{
+		contents = "";
+	}
+
+	editor.installTextView();
+	editor.setLineNumberRulerVisible(options.showLinesRuler === undefined || options.showLinesRuler);
+	editor.setAnnotationRulerVisible(options.showAnnotationRuler === undefined || options.showFoldingRuler);
+	editor.setOverviewRulerVisible(options.showOverviewRuler === undefined || options.showOverviewRuler);
+	editor.setZoomRulerVisible(options.showZoomRuler === undefined || options.showZoomRuler);
+	editor.setFoldingRulerVisible(options.showFoldingRuler === undefined || options.showFoldingRuler);
+	editor.setInput(options.title, null, contents, false, options.noFocus);
+
+	/*
+	 * The minimum height of the editor is 50px. Do not compute size if the editor is not
+	 * attached to the DOM or it is display=none.
+	 */
+	var window = doc.defaultView || doc.parentWindow;
+	if(!options.noComputeSize && getDisplay(window, doc, parent) !== "none" && getHeight(parent) <= 50)
+	{ //$NON-NLS-0$
+		var height = editor.getTextView().computeSize().height;
+		parent.style.height = height + "px"; //$NON-NLS-0$
+	}
+	return editor;
 }
