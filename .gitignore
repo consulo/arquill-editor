@@ -1,3 +1,5 @@
 .consulo/
 node_modules/
 dist/
+public/arquillEditor.css
+public/arquillEditor.js

@@ -1,454 +1,447 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta charset="utf-8"/>
-		<title>Getting Started</title>
-		<style>
-			html, body {
-				padding: 0;
-				margin: 0;
-				height: 100%;
-				width: 100%;
-			}
-			#editor {
-				border: 1px solid teal;
-				position: absolute;
-				top: 0px;
-				left: 0px;
-				bottom: 0px;
-				right: 0px;
-			}
+<head>
+	<meta charset="utf-8"/>
+	<title>Arquill Editor — Feature Demo</title>
+	<link rel="stylesheet" href="arquillEditor.css">
+	<script src="arquillEditor.js"></script>
+	<style>
+		*, *::before, *::after { box-sizing: border-box; }
 
-				pre {
-				margin: 0px;
-			}
-		</style>
-
-		<script src="arquillEditor.js"></script>
-		<link rel="stylesheet" href="arquillEditor.css">
-	</head>
-	<body>
-
-		<pre id="editor-body" style="width:100%; height: 100%">
-/*******************************************************************************
- * @license
- * Copyright (c) 2012 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials are made
- * available under the terms of the Eclipse Public License v1.0
- * (http://www.eclipse.org/legal/epl-v10.html), and the Eclipse Distribution
- * License v1.0 (http://www.eclipse.org/org/documents/edl-v10.html).
- *
- * Contributors: IBM Corporation - initial API and implementation
- ******************************************************************************/
-/*eslint-env browser, amd, node*/
-(function(root, factory) { // UMD
-    if (typeof define === "function" && define.amd) { //$NON-NLS-0$
-        define(factory);
-    } else if (typeof exports === "object") { //$NON-NLS-0$
-        module.exports = factory();
-    } else {
-        root.orion = root.orion || {};
-        root.orion.Deferred = factory();
-    }
-}(this, function() {
-    var queue = [],
-        running = false;
-
-    function run() {
-        var fn;
-        while ((fn = queue.shift())) {
-            fn();
-        }
-        running = false;
-    }
-
-	var runAsync = (function() {
-		if (typeof process !== "undefined" && typeof process.nextTick === "function") {
-			var nextTick = process.nextTick;
-    		return function() {
-    			nextTick(run);
-    		};
-		} else if (typeof MutationObserver === "function") {
-			var div = document.createElement("div");
-			var observer = new MutationObserver(run);
-			observer.observe(div, {
-            	attributes: true
-        	});
-        	return function() {
-        		div.setAttribute("class", "_tick");
-        	};
+		html, body {
+			margin: 0;
+			padding: 0;
+			height: 100%;
+			font-family: sans-serif;
+			background: #1e1e1e;
+			color: #ccc;
+			display: flex;
+			flex-direction: column;
 		}
-		return function() {
-			setTimeout(run, 0);
-		};
-	})();
 
-    function enqueue(fn) {
-        queue.push(fn);
-        if (!running) {
-            running = true;
-            runAsync();
-        }
-    }
+		/* ── Toolbar ── */
+		#toolbar {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 6px;
+			padding: 6px 10px;
+			background: #2d2d2d;
+			border-bottom: 1px solid #444;
+			flex-shrink: 0;
+		}
 
-    function noReturn(fn) {
-        return function(result) {
-            fn(result);
-        };
-    }
+		#toolbar label {
+			font-size: 12px;
+			color: #aaa;
+			display: flex;
+			align-items: center;
+			gap: 4px;
+			cursor: pointer;
+		}
 
-    function settleDeferred(fn, result, deferred) {
-    	try {
-    		var listenerResult = fn(result);
-    		var listenerThen = listenerResult && (typeof listenerResult === "object" || typeof listenerResult === "function") && listenerResult.then;
-    		if (typeof listenerThen === "function") {
-    			if (listenerResult === deferred.promise) {
-    				deferred.reject(new TypeError());
-    			} else {
-    				var listenerResultCancel = listenerResult.cancel;
-    				if (typeof listenerResultCancel === "function") {
-    					deferred._parentCancel = listenerResultCancel.bind(listenerResult);
-    				} else {
-    					delete deferred._parentCancel;
-    				}
-    				listenerThen.call(listenerResult, noReturn(deferred.resolve), noReturn(deferred.reject), noReturn(deferred.progress));
-    			}
-    		} else {
-    			deferred.resolve(listenerResult);
-    		}
-    	} catch (e) {
-    		deferred.reject(e);
-    	}
-    }
+		#toolbar select, #toolbar input[type=number] {
+			background: #3c3c3c;
+			color: #ccc;
+			border: 1px solid #555;
+			border-radius: 3px;
+			padding: 2px 4px;
+			font-size: 12px;
+			width: 50px;
+		}
 
+		#toolbar .sep {
+			width: 1px;
+			height: 20px;
+			background: #555;
+			margin: 0 4px;
+		}
 
-    /**
-     * @name orion.Promise
-     * @class Interface representing an eventual value.
-     * @description Promise is an interface that represents an eventual value returned from the single completion of an operation.
-     *
-     * <p>For a concrete class that implements Promise and provides additional API, see {@link orion.Deferred}.</p>
-     * @see orion.Deferred
-     * @see orion.Deferred#promise
-     */
-    /**
-     * @name then
-     * @function
-     * @memberOf orion.Promise.prototype
-     * @description Adds handlers to be called on fulfillment or progress of this promise.
-     * @param {Function} [onResolve] Called when this promise is resolved.
-     * @param {Function} [onReject] Called when this promise is rejected.
-     * @param {Function} [onProgress] May be called to report progress events on this promise.
-     * @returns {orion.Promise} A new promise that is fulfilled when the given <code>onResolve</code> or <code>onReject</code>
-     * callback is finished. The callback's return value gives the fulfillment value of the returned promise.
-     */
-    /**
-     * Cancels this promise.
-     * @name cancel
-     * @function
-     * @memberOf orion.Promise.prototype
-     * @param {Object} reason The reason for canceling this promise.
-     * @param {Boolean} [strict]
-     */
+		/* ── Editor wrapper ── */
+		#editor-wrap {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			overflow: hidden;
+		}
 
-    /**
-     * @name orion.Deferred
-     * @borrows orion.Promise#then as #then
-     * @borrows orion.Promise#cancel as #cancel
-     * @class Provides abstraction over asynchronous operations.
-     * @description Deferred provides abstraction over asynchronous operations.
-     *
-     * <p>Because Deferred implements the {@link orion.Promise} interface, a Deferred may be used anywhere a Promise is called for. * However, in most such cases it is recommended to use the
-			Deferred's {@link #promise} field instead, which exposes a * simplified, minimally
-			<a href="https://github.com/promises-aplus/promises-spec">Promises/A+</a>
-			-compliant interface to callers.
-		</p>
-     */
-    function Deferred() {
-        var result, state, listeners = [],
-            _this = this;
+		#editor {
+			flex: 1;
+			overflow: hidden;
+		}
 
-        function notify() {
-            var listener;
-            while ((listener = listeners.shift())) {
-                var deferred = listener.deferred;
-                var methodName = state === "fulfilled" ? "resolve" : "reject"; //$NON-NLS-0$ //$NON-NLS-1$ //$NON-NLS-2$
-                var fn = listener[methodName];
-                if (typeof fn === "function") { //$NON-NLS-0$
-                	settleDeferred(fn, result, deferred);
-                } else {
-                    deferred[methodName](result);
-                }
-            }
-        }
+		/* ── Status bar ── */
+		#statusbar {
+			display: flex;
+			gap: 20px;
+			padding: 3px 10px;
+			background: #007acc;
+			color: #fff;
+			font-size: 11px;
+			flex-shrink: 0;
+		}
 
-        function _reject(error) {
-            delete _this._parentCancel;
-            state = "rejected";
-            result = error;
-            if (listeners.length) {
-                enqueue(notify);
-            }
-        }
+		#statusbar span { opacity: 0.9; }
+		#statusbar #status-dirty { font-weight: bold; }
 
-        function _resolve(value) {
-            function once(fn) {
-                return function(result) {
-                    if (!state || state === "assumed") {
-                          fn(result);
-                    }
-                };
-            }
-            delete _this._parentCancel;
-            try {
-                var valueThen = value && (typeof value === "object" || typeof value === "function") && value.then;
-                if (typeof valueThen === "function") {
-                    if (value === _this) {
-                        _reject(new TypeError());
-                    } else {
-                        state = "assumed";
-                        var valueCancel = value && value.cancel;
-                        if (typeof valueCancel !== "function") {
-                            var deferred = new Deferred();
-                            value = deferred.promise;
-                            try {
-                                valueThen(deferred.resolve, deferred.reject, deferred.progress);
-                            } catch (thenError) {
-                                deferred.reject(thenError);
-                            }
-                            valueCancel = value.cancel;
-                            valueThen = value.then;
-                        }
-                        result = value;
-                        valueThen.call(value, once(_resolve), once(_reject));
-                        _this._parentCancel = valueCancel.bind(value);
-                    }
-                } else {
-                    state = "fulfilled";
-                    result = value;
-                    if (listeners.length) {
-                        enqueue(notify);
-                    }
-                }
-            } catch (error) {
-                once(_reject)(error);
-            }
-        }
+		/* ── Shortcuts panel (collapsible) ── */
+		#shortcuts-toggle {
+			padding: 4px 10px;
+			background: #2d2d2d;
+			font-size: 11px;
+			color: #999;
+			cursor: pointer;
+			border-top: 1px solid #444;
+			flex-shrink: 0;
+			user-select: none;
+		}
 
-        function cancel() {
-            var parentCancel = _this._parentCancel;
-            if (parentCancel) {
-                delete _this._parentCancel;
-                parentCancel();
-            } else if (!state) {
-                var cancelError = new Error("Cancel");
-                cancelError.name = "Cancel";
-                _reject(cancelError);
-            }
-        }
+		#shortcuts-toggle:hover { color: #ccc; }
 
+		#shortcuts {
+			display: none;
+			background: #252525;
+			padding: 8px 14px;
+			font-size: 11px;
+			color: #aaa;
+			flex-shrink: 0;
+			border-top: 1px solid #333;
+		}
 
-        /**
-         * Resolves this Deferred.
-         * @name resolve
-         * @function
-         * @memberOf orion.Deferred.prototype
-         * @param {Object} value
-         * @returns {orion.Promise}
-         */
-        this.resolve = function(value) {
-            if (!state) {
-                _resolve(value);
-            }
-            return _this;
-        };
+		#shortcuts.open { display: block; }
 
-        /**
-         * Rejects this Deferred.
-         * @name reject
-         * @function
-         * @memberOf orion.Deferred.prototype
-         * @param {Object} error
-         * @param {Boolean} [strict]
-         * @returns {orion.Promise}
-         */
-        this.reject = function(error) {
-            if (!state) {
-                _reject(error);
-            }
-            return _this;
-        };
+		#shortcuts table { border-collapse: collapse; }
+		#shortcuts td { padding: 2px 14px 2px 0; }
+		#shortcuts td:first-child { color: #569cd6; font-family: monospace; white-space: nowrap; }
+	</style>
+</head>
+<body>
 
-        /**
-         * Notifies listeners of progress on this Deferred.
-         * @name progress
-         * @function
-         * @memberOf orion.Deferred.prototype
-         * @param {Object} update The progress update.
-         * @returns {orion.Promise}
-         */
-        this.progress = function(update) {
-            if (!state) {
-                listeners.forEach(function(listener) {
-                    if (listener.progress) {
-                        try {
-                            listener.progress(update);
-                        } catch (ignore) {
-                            // ignore
-                        }
-                    }
-                });
-            }
-            return _this.promise;
-        };
+<!-- ── Toolbar ── -->
+<div id="toolbar">
 
-        this.cancel = function() {
-            if (_this._parentCancel) {
-                setTimeout(cancel, 0);
-            } else {
-                cancel();
-            }
-            return _this;
-        };
+	<label title="Toggle read-only mode">
+		<input type="checkbox" id="opt-readonly"> Read-only
+	</label>
 
-        // Note: "then" ALWAYS returns before having onResolve or onReject called as per http://promises-aplus.github.com/promises-spec/
-        this.then = function(onFulfill, onReject, onProgress) {
-        	var deferred = new Deferred();
-            deferred._parentCancel = _this.promise.cancel;
-            listeners.push({
-                resolve: onFulfill,
-                reject: onReject,
-                progress: onProgress,
-                deferred: deferred
-            });
-            if (state === "fulfilled" || state === "rejected") {
-                enqueue(notify);
-            }
-            return deferred.promise;
-        };
+	<label title="Wrap long lines">
+		<input type="checkbox" id="opt-wrap"> Wrap
+	</label>
 
-        /**
-         * The promise exposed by this Deferred.
-         * @name promise
-         * @field
-         * @memberOf orion.Deferred.prototype
-         * @type orion.Promise
-         */
-        this.promise = {
-            then: _this.then,
-            cancel: _this.cancel
-        };
-    }
+	<label title="Show line numbers">
+		<input type="checkbox" id="opt-lines" checked> Line #s
+	</label>
 
-    /**
-     * Returns a promise that represents the outcome of all the input promises.
-     * <p>When
-			<code>all</code>
-			is called with a single parameter, the returned promise has
-			<dfn>eager</dfn>
-			semantics, * meaning that if any input promise rejects, the returned promise immediately rejects, without waiting for the rest of the * input promises to fulfill.
-		</p>
-     *
-     * To obtain <dfn>lazy</dfn> semantics (meaning the returned promise waits for every input promise to fulfill), pass the
-     * optional parameter <code>optOnError</code>.
-     * @name all
-     * @function
-     * @memberOf orion.Deferred
-     * @static
-     * @param {orion.Promise[]} promises The input promises.
-     * @param {Function} [optOnError] Handles a rejected input promise. <code>optOnError</code> is invoked for every rejected
-     * input promise, and is passed the reason the input promise was rejected. <p>
-			<code>optOnError</code>
-			can return a value, which * allows it to act as a transformer: the return value serves as the final fulfillment value of the rejected promise in the * results array generated by
-			<code>all</code>
-			. * @returns {orion.Promise} A new promise. The returned promise is generally fulfilled to an
-			<code>Array</code>
-			whose elements * give the fulfillment values of the input promises. <p>However, if an input promise rejects and eager semantics is used, the * returned promise will instead be fulfilled to
-			a single error value.
-		</p>
-     */
-    Deferred.all = function(promises, optOnError) {
-        var count = promises.length,
-            result = [],
-            rejected = false,
-            deferred = new Deferred();
+	<label title="Show folding gutter">
+		<input type="checkbox" id="opt-folding" checked> Folding
+	</label>
 
-        deferred.then(undefined, function() {
-            rejected = true;
-            promises.forEach(function(promise) {
-                if (promise.cancel) {
-                    promise.cancel();
-                }
-            });
-        });
+	<label title="Show overview ruler">
+		<input type="checkbox" id="opt-overview" checked> Overview
+	</label>
 
-        function onResolve(i, value) {
-            if (!rejected) {
-                result[i] = value;
-                if (--count === 0) {
-                    deferred.resolve(result);
-                }
-            }
-        }
+	<div class="sep"></div>
 
-        function onReject(i, error) {
-            if (!rejected) {
-                if (optOnError) {
-                    try {
-                        onResolve(i, optOnError(error));
-                        return;
-                    } catch (e) {
-                        error = e;
-                    }
-                }
-                deferred.reject(error);
-            }
-        }
+	<label title="Tab size">
+		Tab:
+		<input type="number" id="opt-tabsize" value="4" min="1" max="16">
+	</label>
 
-        if (count === 0) {
-            deferred.resolve(result);
-        } else {
-            promises.forEach(function(promise, i) {
-                promise.then(onResolve.bind(undefined, i), onReject.bind(undefined, i));
-            });
-        }
-        return deferred.promise;
-    };
+	<label title="Insert spaces instead of tabs">
+		<input type="checkbox" id="opt-expandtab"> Expand tab
+	</label>
 
-    /**
-     * Applies callbacks to a promise or to a regular object.
-     * @name when
-     * @function
-     * @memberOf orion.Deferred
-     * @static
-     * @param {Object|orion.Promise} value Either a {@link orion.Promise}, or a normal value.
-     * @param {Function} onResolve Called when the <code>value</code> promise is resolved. If <code>value</code> is not a promise,
-     * this function is called immediately.
-     * @param {Function} onReject Called when the <code>value</code> promise is rejected. If <code>value</code> is not a promise,
-     * this function is never called.
-     * @param {Function} onProgress Called when the <code>value</code> promise provides a progress update. If <code>value</code> is
-     * not a promise, this function is never called.
-     * @returns {orion.Promise} A new promise.
-     */
-    Deferred.when = function(value, onResolve, onReject, onProgress) {
-        var promise, deferred;
-        if (value && typeof value.then === "function") { //$NON-NLS-0$
-            promise = value;
-        } else {
-            deferred = new Deferred();
-            deferred.resolve(value);
-            promise = deferred.promise;
-        }
-        return promise.then(onResolve, onReject, onProgress);
-    };
+	<div class="sep"></div>
 
-    return Deferred;
-}));
-		</pre>
+	<label title="Auto-pair parentheses ()">
+		<input type="checkbox" id="opt-pair-parens" checked> ()
+	</label>
 
-		<script>
-			
-			var editor = arquillEditor.createEditor({ parent: "editor-body" });
-		</script>
-	</body>
+	<label title="Auto-pair braces {}">
+		<input type="checkbox" id="opt-pair-braces" checked> {}
+	</label>
+
+	<label title="Auto-pair brackets []">
+		<input type="checkbox" id="opt-pair-brackets" checked> []
+	</label>
+
+	<label title="Auto-pair angle brackets &lt;&gt;">
+		<input type="checkbox" id="opt-pair-angle" checked> &lt;&gt;
+	</label>
+
+	<label title="Auto-pair quotations">
+		<input type="checkbox" id="opt-pair-quotes" checked> &quot;&apos;
+	</label>
+
+	<label title="Auto-complete block comments">
+		<input type="checkbox" id="opt-comments" checked> Comments
+	</label>
+
+	<label title="Smart indentation on Enter">
+		<input type="checkbox" id="opt-smartindent" checked> Smart indent
+	</label>
+
+	<div class="sep"></div>
+
+	<label title="Show whitespace characters (spaces as · , tabs as →)">
+		<input type="checkbox" id="opt-whitespace"> Show whitespace
+	</label>
+
+</div>
+
+<!-- ── Editor + status ── -->
+<div id="editor-wrap">
+	<div id="editor"></div>
+</div>
+
+<div id="statusbar">
+	<span id="status-pos">Ln 1, Col 1</span>
+	<span id="status-dirty"></span>
+	<span id="status-msg"></span>
+</div>
+
+<!-- ── Keyboard shortcuts ── -->
+<div id="shortcuts-toggle" onclick="toggleShortcuts()">⌨ Keyboard Shortcuts ▸</div>
+<div id="shortcuts">
+	<table>
+		<tr><td>Ctrl+Z / Ctrl+Shift+Z</td><td>Undo / Redo</td></tr>
+		<tr><td>Ctrl+F</td><td>Find</td></tr>
+		<tr><td>Ctrl+K / Ctrl+Shift+K</td><td>Find next / previous</td></tr>
+		<tr><td>Ctrl+J / Ctrl+Shift+J</td><td>Incremental find forward / reverse</td></tr>
+		<tr><td>Ctrl+G</td><td>Go to line</td></tr>
+		<tr><td>Ctrl+D</td><td>Delete line(s)</td></tr>
+		<tr><td>Alt+↑ / Alt+↓</td><td>Move line(s) up / down</td></tr>
+		<tr><td>Ctrl+Alt+↑ / Ctrl+Alt+↓</td><td>Copy line(s) up / down</td></tr>
+		<tr><td>Tab / Shift+Tab</td><td>Indent / Unindent</td></tr>
+		<tr><td>Ctrl+/</td><td>Toggle line comment</td></tr>
+		<tr><td>Ctrl+Shift+/</td><td>Add block comment</td></tr>
+		<tr><td>Ctrl+\</td><td>Remove block comment</td></tr>
+		<tr><td>Ctrl+Shift+T</td><td>Trim trailing whitespace</td></tr>
+		<tr><td>Ctrl+Shift+E / Ctrl+Shift+C</td><td>Expand / Collapse fold</td></tr>
+		<tr><td>Ctrl+Shift+Alt+E / C</td><td>Expand all / Collapse all</td></tr>
+		<tr><td>Ctrl+. / Ctrl+,</td><td>Next / Previous annotation</td></tr>
+		<tr><td>Ctrl+Q</td><td>Go to last edit</td></tr>
+		<tr><td>Ctrl+Space</td><td>Content assist (autocomplete)</td></tr>
+	</table>
+</div>
+
+<script>
+(function() {
+
+	// ── Initial content ──────────────────────────────────────────────
+	var initialContent = [
+		"// Arquill Editor — full feature demo",
+		"// Try: Ctrl+Space for autocomplete, Ctrl+/ for comments,",
+		"//      Ctrl+F to find, Ctrl+G to go to line.",
+		"",
+		"function fibonacci(n) {",
+		"    if (n <= 1) {",
+		"        return n;",
+		"    }",
+		"    return fibonacci(n - 1) + fibonacci(n - 2);",
+		"}",
+		"",
+		"// Generate first 10 Fibonacci numbers",
+		"var results = [];",
+		"for (var i = 0; i < 10; i++) {",
+		"    results.push(fibonacci(i));",
+		"}",
+		"",
+		"console.log('Fibonacci sequence:', results.join(', '));",
+		"",
+		"/**",
+		" * A simple class example.",
+		" * Fold this block with the folding gutter on the left.",
+		" */",
+		"function Counter(start) {",
+		"    this.value = start || 0;",
+		"}",
+		"",
+		"Counter.prototype.increment = function() {",
+		"    this.value++;",
+		"    return this;",
+		"};",
+		"",
+		"Counter.prototype.decrement = function() {",
+		"    this.value--;",
+		"    return this;",
+		"};",
+		"",
+		"Counter.prototype.reset = function() {",
+		"    this.value = 0;",
+		"    return this;",
+		"};",
+		"",
+		"Counter.prototype.toString = function() {",
+		"    return 'Counter(' + this.value + ')';",
+		"};",
+		"",
+		"var c = new Counter(5);",
+		"c.increment().increment().decrement();",
+		"console.log(c.toString()); // Counter(6)",
+	].join("\n");
+
+	// ── Simple content assist provider (keyword + word list) ─────────
+	var keywords = [
+		"function", "return", "var", "let", "const", "if", "else",
+		"for", "while", "do", "switch", "case", "break", "continue",
+		"new", "this", "typeof", "instanceof", "in", "of", "try",
+		"catch", "finally", "throw", "class", "extends", "import",
+		"export", "default", "async", "await", "null", "undefined",
+		"true", "false", "prototype", "constructor", "console", "log"
+	];
+
+	function getPrefix(buffer, offset) {
+		var i = offset - 1;
+		while (i >= 0 && /\w/.test(buffer[i])) { i--; }
+		return buffer.substring(i + 1, offset);
+	}
+
+	var wordlistProvider = {
+		computeProposals: function(buffer, offset, context) {
+			var prefix = getPrefix(buffer, offset);
+			if (!prefix) { return []; }
+			var lc = prefix.toLowerCase();
+
+			// collect unique words from buffer
+			var words = {};
+			(buffer.match(/\b[a-zA-Z_$][a-zA-Z0-9_$]{2,}\b/g) || []).forEach(function(w) {
+				words[w] = true;
+			});
+			keywords.forEach(function(k) { words[k] = true; });
+
+			return Object.keys(words)
+				.filter(function(w) {
+					return w.toLowerCase().indexOf(lc) === 0 && w !== prefix;
+				})
+				.sort()
+				.map(function(w) {
+					return {
+						proposal: w.substring(prefix.length),
+						description: w,
+						style: { styleClass: keywords.indexOf(w) >= 0 ? "keyword" : "default" }
+					};
+				});
+		}
+	};
+
+	// ── Status reporter ──────────────────────────────────────────────
+	var statusMsg = document.getElementById("status-msg");
+	function statusReporter(message, type) {
+		statusMsg.textContent = message || "";
+	}
+
+	// ── Create editor ────────────────────────────────────────────────
+	var editor = arquillEditor.createEditor({
+		parent: "editor",
+		contents: initialContent,
+		statusReporter: statusReporter,
+		tabSize: 4,
+		expandTab: false,
+		fullSelection: true,
+		showLinesRuler: true,
+		showFoldingRuler: true,
+		showOverviewRuler: true,
+		showZoomRuler: true,
+		autoPairParentheses: true,
+		autoPairBraces: true,
+		autoPairSquareBrackets: true,
+		autoPairAngleBrackets: true,
+		autoPairQuotations: true,
+		autoCompleteComments: true,
+		smartIndentation: true
+	});
+
+	// Register content assist provider
+	var contentAssist = editor.getContentAssist && editor.getContentAssist();
+	if (contentAssist) {
+		contentAssist.addEventListener("Activating", function() {
+			contentAssist.setProviders([wordlistProvider]);
+		});
+	}
+
+	// ── Caret position in status bar ────────────────────────────────
+	var posEl = document.getElementById("status-pos");
+	var dirtyEl = document.getElementById("status-dirty");
+
+	editor.addEventListener("CursorChanged", function() {
+		var tv = editor.getTextView();
+		if (!tv) { return; }
+		var offset = tv.getCaretOffset();
+		var model = editor.getModel();
+		var line = model.getLineAtOffset(offset);
+		var col = offset - model.getLineStart(line);
+		posEl.textContent = "Ln " + (line + 1) + ", Col " + (col + 1);
+	});
+
+	editor.addEventListener("DirtyChanged", function() {
+		dirtyEl.textContent = editor.isDirty() ? "● Modified" : "";
+	});
+
+	// ── Toolbar: live option toggles ─────────────────────────────────
+	function bind(id, apply) {
+		document.getElementById(id).addEventListener("change", function() {
+			apply(this.checked !== undefined ? this : this);
+		});
+	}
+
+	document.getElementById("opt-readonly").addEventListener("change", function() {
+		editor.getTextView().setOptions({ readonly: this.checked });
+	});
+
+	document.getElementById("opt-wrap").addEventListener("change", function() {
+		editor.getTextView().setOptions({ wrapMode: this.checked });
+	});
+
+	document.getElementById("opt-lines").addEventListener("change", function() {
+		editor.setLineNumberRulerVisible(this.checked);
+	});
+
+	document.getElementById("opt-folding").addEventListener("change", function() {
+		editor.setFoldingRulerVisible(this.checked);
+	});
+
+	document.getElementById("opt-overview").addEventListener("change", function() {
+		editor.setOverviewRulerVisible(this.checked);
+	});
+
+	document.getElementById("opt-tabsize").addEventListener("change", function() {
+		var v = parseInt(this.value, 10);
+		if (v > 0) { editor.getTextView().setOptions({ tabSize: v }); }
+	});
+
+	document.getElementById("opt-expandtab").addEventListener("change", function() {
+		editor.getTextView().setOptions({ expandTab: this.checked });
+	});
+
+	// Auto-pair / source actions
+	function pairToggle(id, setter) {
+		document.getElementById(id).addEventListener("change", function() {
+			var sa = editor.getSourceCodeActions && editor.getSourceCodeActions();
+			if (sa) { setter(sa, this.checked); }
+		});
+	}
+
+	pairToggle("opt-pair-parens",    function(sa, v) { sa.setAutoPairParentheses(v); });
+	pairToggle("opt-pair-braces",    function(sa, v) { sa.setAutoPairBraces(v); });
+	pairToggle("opt-pair-brackets",  function(sa, v) { sa.setAutoPairSquareBrackets(v); });
+	pairToggle("opt-pair-angle",     function(sa, v) { sa.setAutoPairAngleBrackets(v); });
+	pairToggle("opt-pair-quotes",    function(sa, v) { sa.setAutoPairQuotations(v); });
+	pairToggle("opt-comments",       function(sa, v) { sa.setAutoCompleteComments(v); });
+	pairToggle("opt-smartindent",    function(sa, v) { sa.setSmartIndentation(v); });
+
+	document.getElementById("opt-whitespace").addEventListener("change", function() {
+		editor.setWhitespacesVisible(this.checked);
+	});
+
+})();
+
+function toggleShortcuts() {
+	var el = document.getElementById("shortcuts");
+	var tog = document.getElementById("shortcuts-toggle");
+	var open = el.classList.toggle("open");
+	tog.textContent = (open ? "⌨ Keyboard Shortcuts ▾" : "⌨ Keyboard Shortcuts ▸");
+}
+</script>
+</body>
 </html>

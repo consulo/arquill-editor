@@ -2,9 +2,11 @@ var path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
+	mode: 'development',
 	devServer: {
-		index: 'index.html',
-		contentBase: path.join(__dirname, 'public'),
+		static: {
+			directory: path.join(__dirname, 'public'),
+		},
 		compress: true,
 		port: 9000
 	},
@@ -20,6 +22,7 @@ module.exports = {
 		hints : false
 	},
 	output: {
+		path: path.join(__dirname, 'public'),
 		filename: 'arquillEditor.js',
 	},
 	entry:  './src/index.js',

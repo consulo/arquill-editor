@@ -225,6 +225,49 @@ export default function createEditor(options)
 		hoverFactory: options.hoverFactory,
 		domNode: parent
 	});
+	var _whitespacesVisible = !!options.showWhitespaces;
+	var _spacePattern = {regex: /[ ]/g,  styleClass: "punctuation separator space"};
+	var _tabPattern   = {regex: /\t/g,   styleClass: "punctuation separator tab"};
+
+	function _spliceWhitespace(ranges, text, offset, pattern)
+	{
+		var regex = pattern.regex;
+		regex.lastIndex = 0;
+		var rangeIndex = 0;
+		var result = regex.exec(text);
+		while(result)
+		{
+			var charIndex = offset + result.index;
+			while(rangeIndex < ranges.length && charIndex >= ranges[rangeIndex].end)
+			{
+				rangeIndex++;
+			}
+			var newStyle = {start: charIndex, end: charIndex + 1, style: {styleClass: pattern.styleClass, unmergeable: true}};
+			if(rangeIndex < ranges.length && ranges[rangeIndex].start <= charIndex)
+			{
+				var tail = {start: charIndex + 1, end: ranges[rangeIndex].end, style: ranges[rangeIndex].style};
+				ranges[rangeIndex].end = charIndex;
+				ranges.splice(rangeIndex + 1, 0, tail);
+				ranges.splice(rangeIndex + 1, 0, newStyle);
+				rangeIndex += 2;
+			}
+			else
+			{
+				ranges.splice(rangeIndex, 0, newStyle);
+				rangeIndex++;
+			}
+			result = regex.exec(text);
+		}
+	}
+
+	function _onLineStyle(e)
+	{
+		if(!_whitespacesVisible) { return; }
+		if(!e.ranges) { e.ranges = []; }
+		_spliceWhitespace(e.ranges, e.lineText, e.lineStart, _spacePattern);
+		_spliceWhitespace(e.ranges, e.lineText, e.lineStart, _tabPattern);
+	}
+
 	editor.addEventListener("TextViewInstalled", function()
 	{ //$NON-NLS-0$
 		var ruler = editor.getLineNumberRuler();
@@ -243,7 +286,21 @@ export default function createEditor(options)
 			sourceCodeActions.setAutoCompleteComments(options.autoCompleteComments);
 			sourceCodeActions.setSmartIndentation(options.smartIndentation);
 		}
+		editor.getTextView().addEventListener("LineStyle", _onLineStyle); //$NON-NLS-0$
 	});
+
+	editor.setWhitespacesVisible = function(visible)
+	{
+		if(_whitespacesVisible === visible) { return; }
+		_whitespacesVisible = visible;
+		var tv = editor.getTextView();
+		if(tv) { tv.redraw(); }
+	};
+
+	editor.isWhitespacesVisible = function()
+	{
+		return _whitespacesVisible;
+	};
 
 	var contents = options.contents;
 	if(contents === undefined)
