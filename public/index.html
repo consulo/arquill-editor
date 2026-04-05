@@ -187,6 +187,12 @@
 		<input type="checkbox" id="opt-whitespace"> Show whitespace
 	</label>
 
+	<div class="sep"></div>
+
+	<label title="Demo inlay hints: annotates lines containing 'function' with a hint">
+		<input type="checkbox" id="opt-inlay"> Inlay hints
+	</label>
+
 </div>
 
 <!-- ── Editor + status ── -->
@@ -432,6 +438,36 @@
 
 	document.getElementById("opt-whitespace").addEventListener("change", function() {
 		editor.setWhitespacesVisible(this.checked);
+	});
+
+	// Demo inlay hint provider: annotates the end of lines that declare a function
+	var demoInlayProvider = {
+		computeInlays: function(lineText, lineIndex, lineStart) {
+			var hints = [];
+			var m = lineText.match(/^(function\s+(\w+)\s*\(([^)]*)\))/);
+			if (m) {
+				var paramCount = m[3].trim() === "" ? 0 : m[3].split(",").length;
+				hints.push({
+					offset: lineStart + m[1].length,
+					content: paramCount + " param" + (paramCount !== 1 ? "s" : ""),
+					style: {
+						color: "rgba(60,120,200,0.85)",
+						backgroundColor: "rgba(100,180,255,0.18)",
+						borderRadius: "3px",
+						padding: "1px 4px",
+						marginLeft: "4px",
+						marginRight: "4px",
+						fontSize: "0.85em",
+						verticalAlign: "middle"
+					}
+				});
+			}
+			return hints;
+		}
+	};
+
+	document.getElementById("opt-inlay").addEventListener("change", function() {
+		editor.setInlayHintProvider(this.checked ? demoInlayProvider : null);
 	});
 
 })();

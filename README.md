@@ -124,6 +124,27 @@ contentAssist.addEventListener('Activating', function() {
 });
 ```
 
+### Inlay hint provider
+
+```js
+editor.setInlayHintProvider({
+  computeInlays: function(lineText, lineIndex, lineStart) {
+    // Return an array of hints for this line, or null/[]
+    return [
+      {
+        offset:     lineStart + 10,          // absolute document offset to insert before
+        content:    ": string",              // string, {html: "<b>…</b>"}, or DOM Node
+        style:      { color: "gray", fontStyle: "italic" },  // optional CSS properties
+        styleClass: "my-inlay-hint"          // optional CSS class
+      }
+    ];
+  }
+});
+
+// Remove provider
+editor.setInlayHintProvider(null);
+```
+
 ### Content assist provider interface
 
 ```js

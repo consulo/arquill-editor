@@ -14,7 +14,7 @@ module.exports = {
 		minimize: false
 	},
 	resolve: {
-		extensions: ['.js'],
+		extensions: ['.ts', '.js'],
 		modules: ['node_modules/', 'src/'],
 		symlinks: false,
 	},
@@ -25,9 +25,14 @@ module.exports = {
 		path: path.join(__dirname, 'public'),
 		filename: 'arquillEditor.js',
 	},
-	entry:  './src/index.js',
+	entry:  './src/index.ts',
 	module: {
 		rules: [
+			{
+				test: /\.ts$/,
+				exclude: /node_modules/,
+				use: 'ts-loader',
+			},
 			{
 				test: /\.js$/,
 				exclude: /(node_modules|bower_components)/,
