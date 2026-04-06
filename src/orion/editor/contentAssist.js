@@ -18,12 +18,11 @@ define("orion/editor/contentAssist", [
 	'orion/editor/eventTarget',
 	'orion/Deferred',
 	'orion/objects',
-	'orion/editor/tooltip',
 	'orion/editor/util',
 	'orion/util',
 	'orion/webui/littlelib',
 	'orion/metrics'
-], function(messages, mKeyBinding, mKeyModes, mEventTarget, Deferred, objects, mTooltip, textUtil, util, lib, mMetrics) {
+], function(messages, mKeyBinding, mKeyModes, mEventTarget, Deferred, objects, textUtil, util, lib, mMetrics) {
 	/**
 	 * @name orion.editor.ContentAssistProvider
 	 * @class Interface defining a provider of content assist proposals.
@@ -1047,45 +1046,8 @@ define("orion/editor/contentAssist", [
 			return true;
 		},
 		
-		/**
-		 * Opens the tooltip for the selected proposal beside the content assist window
-		 * @param update if false, the tooltip will be hidden then reopened with the new contents
-		 * @param noContent if true the current tooltip contents will not be replaced, just size and position updated
-		 */
-		_showTooltip: function(update, noContent) {
-			var tooltip = mTooltip.Tooltip.getTooltip(this.contentAssist.textView);
-			var self = this;
-			var target = {
-				getTooltipInfo: function() {
-					var bounds = self.widget.parentNode.getBoundingClientRect();
-					var tipArea = {width: 350, height: bounds.height, top: bounds.top};
-					if ((bounds.left + bounds.width) >= document.documentElement.clientWidth){
-						tipArea.left = bounds.left - tipArea.width;
-						tipArea.left -= 10;
-					} else {
-						tipArea.left = bounds.left + bounds.width;
-						tipArea.left += 10;
-					}
-					var info = {
-						context: {proposal: self.proposals[self.selectedIndex]},
-						anchorArea: bounds,
-						tooltipArea: tipArea
-					};
-					return info;
-				}
-			};
-			
-			if (update) {
-				tooltip.update(target, noContent);
-			} else {
-				tooltip.show(target, true, false);
-			}
-		},
-		
-		_hideTooltip: function() {
-			var tooltip = mTooltip.Tooltip.getTooltip(this.contentAssist.textView);
-			tooltip.hide(true); // Clear the lock
-		},
+		_showTooltip: function() {},
+		_hideTooltip: function() {},
 
 		pageUp: function() {
 			//TODO find out why this doesn't always go to the very top
@@ -1534,8 +1496,7 @@ define("orion/editor/contentAssist", [
 					this._mutationObserver.observe(this.parentNode, {attributes: true});
 				}
 				if (!this.autoDismissFunctionAdded) {
-					var tooltip = mTooltip.Tooltip.getTooltip(this.contentAssist.textView);
-					lib.addAutoDismiss([this.parentNode, tooltip._tooltipDiv], this.autoDismissFunction);
+					lib.addAutoDismiss([this.parentNode], this.autoDismissFunction);
 					this.autoDismissFunctionAdded = true;
 				}
 			}

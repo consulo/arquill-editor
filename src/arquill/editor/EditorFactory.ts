@@ -7,9 +7,9 @@ import * as mEditorFeatures from "orion/editor/editorFeatures";
 import * as mContentAssist from "orion/editor/contentAssist";
 import * as mTextStyler from "orion/editor/textStyler";
 
-import type { EditorOptions, InlayHint, InlayHintProvider, IEditor } from "./api";
+import type { EditorOptions, InlayHint, InlayHintProvider, ContentAssistProvider, IEditor } from "./api";
 
-export type { EditorOptions, InlayHint, InlayHintProvider, IEditor, InlayHintStyle } from "./api";
+export type { EditorOptions, InlayHint, InlayHintProvider, ContentAssistProvider, IEditor, InlayHintStyle, CompletionProposal } from "./api";
 
 // ─── private helpers ─────────────────────────────────────────────────────────
 
@@ -147,7 +147,7 @@ export default function createEditor(options: EditorOptions): IEditor {
         wrappable: options.wrappable,
     });
 
-    let contentAssist: any;
+    let contentAssist: any = null;
     let contentAssistFactory: any;
     if (!options.readonly) {
         contentAssistFactory = {
@@ -283,6 +283,12 @@ export default function createEditor(options: EditorOptions): IEditor {
 
     (editor as any).getInlayHintProvider = function(): InlayHintProvider | null {
         return _inlayHintProvider;
+    };
+
+    (editor as any).setContentAssistProviders = function(providers: ContentAssistProvider[]): void {
+        if (contentAssist) {
+            contentAssist.setProviders(providers);
+        }
     };
 
     let contents = options.contents;

@@ -14,11 +14,8 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 	'orion/editor/nls/messages', //$NON-NLS-0$
 	'orion/keyBinding', //$NON-NLS-0$
 	'orion/editor/annotations', //$NON-NLS-0$
-	'orion/editor/tooltip', //$NON-NLS-0$
-	'orion/editor/find', //$NON-NLS-0$
-	'orion/editor/findUI', //$NON-NLS-0$
 	'orion/util' //$NON-NLS-0$
-], function(messages, mKeyBinding, mAnnotations, mTooltip, mFind, mFindUI, util) {
+], function(messages, mKeyBinding, mAnnotations, util) {
 
 	var AT = mAnnotations.AnnotationType;
 
@@ -45,11 +42,9 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 	/**
 	 * TextActions connects common text editing keybindings onto an editor.
 	 */
-	function TextActions(editor, undoStack, find) {
+	function TextActions(editor, undoStack) {
 		this.editor = editor;
 		this.undoStack = undoStack;
-		this._incrementalFind = new mFind.IncrementalFind(editor);
-		this._find = find ? find : new mFindUI.FindUI(editor, undoStack);
 		this._lastEditLocation = null;
 		this.init();
 	}
@@ -97,50 +92,6 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 				return false;
 			}.bind(this), {name: messages.redo});
 
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("f", true), "find"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("find", function() { //$NON-NLS-0$
-				if (this._find) {
-					var selection = this.editor.getSelection();
-					this._find.show({findString:this.editor.getText(selection.start, selection.end)});
-					return true;
-				}
-				return false;
-			}.bind(this), {name: messages.find});
-
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("k", true), "findNext"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("findNext", function(options) { //$NON-NLS-0$
-				if (this._find){
-					this._find.find(true, options);
-					return true;
-				}
-				return false;
-			}.bind(this), {name: messages.findNext});
-
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("k", true, true), "findPrevious"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("findPrevious", function(options) { //$NON-NLS-0$
-				if (this._find){
-					this._find.find(false, options);
-					return true;
-				}
-				return false;
-			}.bind(this), {name: messages.findPrevious});
-
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("j", true), "incrementalFind"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("incrementalFind", function() { //$NON-NLS-0$
-				if (this._incrementalFind) {
-					this._incrementalFind.find(true);
-				}
-				return true;
-			}.bind(this), {name: messages.incrementalFind});
-
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("j", true, true), "incrementalFindReverse"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("incrementalFindReverse", function() { //$NON-NLS-0$
-				if (this._incrementalFind) {
-					this._incrementalFind.find(false);
-				}
-				return true;
-			}.bind(this), {name: messages.incrementalFindReverse});
-
 			textView.setAction("tab", function() { //$NON-NLS-0$
 				return this.indentLines();
 			}.bind(this), {name: messages.indentLines});
@@ -173,11 +124,6 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 			textView.setAction("deleteLines", function(data) { //$NON-NLS-0$
 				return this.deleteLines(data);
 			}.bind(this), {name: messages.deleteLines});
-
-			textView.setKeyBinding(new mKeyBinding.KeyBinding("g", !util.isMac, false, false, util.isMac), "gotoLine"); //$NON-NLS-1$ //$NON-NLS-2$
-			textView.setAction("gotoLine", function() { //$NON-NLS-0$
-				return this.gotoLine();
-			}.bind(this), {name: messages.gotoLine});
 
 			textView.setKeyBinding(new mKeyBinding.KeyBinding(190, true), "nextAnnotation"); //$NON-NLS-0$
 			textView.setAction("nextAnnotation", function() { //$NON-NLS-0$
@@ -389,17 +335,6 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 			}
 			return true;
 		},
-		gotoLine: function() {
-			var editor = this.editor;
-			var model = editor.getModel();
-			var line = model.getLineAtOffset(editor.getCaretOffset());
-			line = prompt(messages.gotoLinePrompty, line + 1);
-			if (line) {
-				line = parseInt(line, 10);
-				editor.onGotoLine(line - 1, 0);
-			}
-			return true;
-		},
 		moveLinesDown: function() {
 			var editor = this.editor;
 			var textView = editor.getTextView();
@@ -523,35 +458,8 @@ define("orion/editor/actions", [ //$NON-NLS-0$
 				}
 			}
 			if (foundAnnotation) {
-				var foundAnnotations = [foundAnnotation];
-				annotations = annotationModel.getAnnotations(foundAnnotation.start, foundAnnotation.start);
-				while (annotations.hasNext()) {
-					annotation = annotations.next();
-					if (annotation !== foundAnnotation && !ignore(annotation, this._iterationMode)) {
-						foundAnnotations.push(annotation);
-					}
-				}
-				var view = editor.getTextView();
-				var tooltip = mTooltip.Tooltip.getTooltip(view, editor);
 				this._lastPosition = foundAnnotation.start;
-				if (!tooltip) {
-					editor.moveSelection(foundAnnotation.start);
-					return true;
-				}
-				editor.moveSelection(foundAnnotation.start, foundAnnotation.start, function() {
-					setTimeout(function() {
-						var tv = editor.getTextView();
-						var offset = foundAnnotation.start;
-						var pos = tv.getLocationAtOffset(offset);
-						tooltip.show({
-							x: pos.x,
-							y: pos.y,
-							getTooltipInfo: function() {
-								return editor._getTooltipInfo(this.x, this.y);
-							}
-						}, false, false);						
-					}, 0);
-				});
+				editor.moveSelection(foundAnnotation.start);
 			}
 			return true;
 		},

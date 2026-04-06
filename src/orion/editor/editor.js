@@ -12,12 +12,11 @@
 define("orion/editor/editor", [
 	'orion/editor/nls/messages',
 	'orion/editor/eventTarget',
-	'orion/editor/tooltip',
 	'orion/editor/annotations',
 	'orion/objects',
 	'orion/editor/util',
 	'orion/util'
-], function(messages, mEventTarget, mTooltip, mAnnotations, objects, textUtil, util) {
+], function(messages, mEventTarget, mAnnotations, objects, textUtil, util) {
 	
 	var AT = mAnnotations.AnnotationType;
 
@@ -435,7 +434,7 @@ define("orion/editor/editor", [
 		 * @returns {orion.editor.Tooltip}
 		*/
 		getTooltip: function() {
-			return mTooltip.Tooltip.getTooltip(this._textView, this);
+			return null;
 		},
 		/**
 		 * Returns the zoom ruler of the editor.
@@ -1005,12 +1004,6 @@ define("orion/editor/editor", [
 				this._contentAssist = contentAssistMode.getContentAssist();
 			}
 
-			var tooltip = mTooltip.Tooltip.getTooltip(this._textView, this);
-			if (this._hoverFactory) {
-				this._hover = this._hoverFactory.createHover(this);
-				tooltip.hover = this._hover;
-			}
-			
 			var editor = this, textView = this._textView;
 
 			var that = this;
@@ -1018,68 +1011,13 @@ define("orion/editor/editor", [
 				onModelChanged: /* @callback */ function(e) {
 					that.checkDirty();
 				},
-				onMouseOver: function(e) {
-					that._listener.onMouseMove(e);
-				},
-				onMouseDown: /* @callback */ function(e) {
-					that._listener.mouseDown = true;
-				},
-				onMouseUp: /* @callback */ function(e) {
-					that._listener.mouseDown = false;
-				},
-				onMouseMove: function(e) {
-					if (!tooltip || that._listener.mouseDown) { return; }
-
-					// Prevent spurious mouse event (e.g. on a scroll)					
-					if (e.event.clientX === that._listener.lastMouseX
-						&& e.event.clientY === that._listener.lastMouseY) {
-						return;
-					}
-					
-					that._listener.lastMouseX = e.event.clientX;
-					that._listener.lastMouseY = e.event.clientY;
-
-					if (that._hoverTimeout) {
-						window.clearTimeout(that._hoverTimeout);
-						that._hoverTimeout = null;
-					}
-					that._hoverTimeout = window.setTimeout(function() {
-						that._hoverTimeout = null;
-						
-						// Re-check incase editor closed...
-						if (!that._listener){
-							return;
-						}
-						
-						tooltip.onHover({
-							y: e.y,
-							x: e.x,							
-							getTooltipInfo: function() {
-								return that._getTooltipInfo(this.x, this.y);
-							}
-						}, e.x, e.y);
-					}, 175);
-				},
-				onMouseOut: /* @callback */ function(e) {
-					// When mouse leaves the editor, ignore any pending onMouseMove events
-					if (that._hoverTimeout) {
-						window.clearTimeout(that._hoverTimeout);
-						that._hoverTimeout = null;
-					}
-				},
 				onSelection: function(e) {
-					if (tooltip) { tooltip.hide(); }
 					that._updateCursorStatus();
 					that._highlightCurrentLine(e.newValue, e.oldValue);
 				}
 			};
 			textView.addEventListener("ModelChanged", this._listener.onModelChanged); //$NON-NLS-0$
 			textView.addEventListener("Selection", this._listener.onSelection); //$NON-NLS-0$
-			textView.addEventListener("MouseOver", this._listener.onMouseOver); //$NON-NLS-0$
-			textView.addEventListener("MouseOut", this._listener.onMouseOut); //$NON-NLS-0$
-			textView.addEventListener("MouseDown", this._listener.onMouseDown); //$NON-NLS-0$
-			textView.addEventListener("MouseUp", this._listener.onMouseUp); //$NON-NLS-0$
-			textView.addEventListener("MouseMove", this._listener.onMouseMove); //$NON-NLS-0$
 
 			// Set up keybindings
 			if (this._keyBindingFactory) {

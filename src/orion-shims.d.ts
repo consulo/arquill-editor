@@ -56,6 +56,7 @@ declare module "orion/editor/contentAssist" {
     export class ContentAssist {
         constructor(textView: any);
         setMode(mode: any): void;
+        setProviders(providers: any[]): void;
     }
     export class ContentAssistWidget {
         constructor(contentAssist: any);

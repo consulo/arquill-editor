@@ -28,6 +28,31 @@ export interface InlayHintProvider {
     computeInlays(lineText: string, lineIndex: number, lineStart: number): InlayHint[] | null | undefined;
 }
 
+/** A single completion proposal returned by a {@link ContentAssistProvider}. */
+export interface CompletionProposal {
+    /** The text inserted when the proposal is accepted. */
+    proposal: string;
+    /** Label shown in the proposal list. Defaults to `proposal` if omitted. */
+    description?: string;
+    /** CSS class applied to the proposal row. */
+    style?: string;
+}
+
+/**
+ * Provides completion proposals.
+ *
+ * `computeProposals(buffer, offset, context)` must return an array of
+ * {@link CompletionProposal} objects (or plain strings), or a Promise that
+ * resolves to such an array.
+ */
+export interface ContentAssistProvider {
+    computeProposals(
+        buffer: string,
+        offset: number,
+        context: { line: string; prefix: string; selection: { start: number; end: number } }
+    ): Array<CompletionProposal | string> | Promise<Array<CompletionProposal | string>>;
+}
+
 /** Options passed to {@link createEditor}. */
 export interface EditorOptions {
     parent?: string | HTMLElement;
@@ -76,4 +101,5 @@ export interface IEditor {
     isWhitespacesVisible(): boolean;
     setInlayHintProvider(provider: InlayHintProvider | null): void;
     getInlayHintProvider(): InlayHintProvider | null;
+    setContentAssistProviders(providers: ContentAssistProvider[]): void;
 }

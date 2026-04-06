@@ -18,11 +18,10 @@ define("orion/editor/rulers", [
 	'orion/editor/nls/messages',
 	'orion/editor/textView',
 	'orion/editor/annotations',
-	'orion/editor/tooltip', 
 	'orion/objects',
 	'orion/editor/util',
 	'orion/util'
-], function(messages, mTextView, mAnnotations, mTooltip, objects, textUtil, util) {
+], function(messages, mTextView, mAnnotations, objects, textUtil, util) {
 
 	function BaseRuler (rulerLocation, rulerOverview, rulerStyle) {
 		this._location = rulerLocation || "left"; //$NON-NLS-0$
@@ -335,20 +334,6 @@ define("orion/editor/rulers", [
 	 		}
 
 
-			// Open the tooltip for the selected annotation in the same location as the multi-annotation ruler tooltip.
-			if(evt.showTooltip) {
-				var tooltip = mTooltip.Tooltip.getTooltip(this._view);
-				if (tooltip) {
-					if (annotation && this.getLocation() === "left"){ //$NON-NLS-0$
-						tooltip.show({getTooltipInfo: function() {
-								return self._getTooltipInfo([annotation]);
-							}
-						}, false, false);
-					} else {
-						tooltip.hide();
-					}
-				}
-			}
 		},
 		/**
 		 * This event is sent when the user double clicks a line annotation.
@@ -368,50 +353,6 @@ define("orion/editor/rulers", [
 		 * @param {DOMEvent} e the mouse move event.
 		 */
 		onMouseMove: function(lineIndex, e) {
-			var tooltip = mTooltip.Tooltip.getTooltip(this._view);
-			if (!tooltip) { return; }
-			if (tooltip.isVisible() && this._tooltipLineIndex === lineIndex) { return; }
-			this._tooltipLineIndex = lineIndex;
-			
-			// Prevent spurious mouse event (e.g. on a scroll)					
-			if (e.clientX === this._lastMouseX
-				&& e.clientY === this._lastMouseY) {
-				return;
-			}
-			
-			this._lastMouseX = e.clientX;
-			this._lastMouseY = e.clientY;
-
-			if (this._hoverTimeout) {
-				window.clearTimeout(this._hoverTimeout);
-				this._hoverTimeout = null;
-			}
-			
-			var target = e.target ? e.target : e.srcElement;
-			var bounds = target.getBoundingClientRect();
-			this._curElementBounds = Object.create(null);
-			this._curElementBounds.top = bounds.top;
-			this._curElementBounds.left = bounds.left;
-			this._curElementBounds.height = bounds.height;
-			this._curElementBounds.width = bounds.width;
-			
-			// If we have the entire ruler selected, just use a 1 pixel high area in the ruler (Bug 463486)
-			if (target === this.node){
-				this._curElementBounds.top = e.clientY;
-				this._curElementBounds.height = 1;
-			}
-			
-			var self = this;
-			self._hoverTimeout = window.setTimeout(function() {
-				self._hoverTimeout = null;
-				tooltip.onHover({
-					getTooltipInfo: function() {
-						var annotations = self._getAnnotationsAtLineIndex(self._tooltipLineIndex);
-						var content = self._getTooltipContents(self._tooltipLineIndex, annotations);
-						return self._getTooltipInfo(content, e.clientY, {source: "ruler", rulerLocation: self.getLocation()}); //$NON-NLS-0$
-					}
-				}, e.clientX, e.clientY);
-			}, 175);
 		},
 		/**
 		 * This event is sent when the mouse pointer enters a line annotation.
@@ -967,10 +908,6 @@ define("orion/editor/rulers", [
 			annotation = a;
 		}
 		if (annotation) {
-			var tooltip = mTooltip.Tooltip.getTooltip(this._view);
-			if (tooltip) {
-				tooltip.hide();
-			}
 			if (annotation.expanded) {
 				annotation.collapse();
 			} else {

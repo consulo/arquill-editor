@@ -325,7 +325,7 @@
 					return {
 						proposal: w.substring(prefix.length),
 						description: w,
-						style: { styleClass: keywords.indexOf(w) >= 0 ? "keyword" : "default" }
+						style: keywords.indexOf(w) >= 0 ? "keyword" : "default"
 					};
 				});
 		}
@@ -359,12 +359,7 @@
 	});
 
 	// Register content assist provider
-	var contentAssist = editor.getContentAssist && editor.getContentAssist();
-	if (contentAssist) {
-		contentAssist.addEventListener("Activating", function() {
-			contentAssist.setProviders([wordlistProvider]);
-		});
-	}
+	editor.setContentAssistProviders([wordlistProvider]);
 
 	// ── Caret position in status bar ────────────────────────────────
 	var posEl = document.getElementById("status-pos");
