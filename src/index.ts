@@ -1,7 +1,7 @@
-import createEditor from "arquill/editor/EditorFactory";
+import createEditor from "arquill/EditorFactory";
 import "orion/editor/themes/default.css";
 
-export type { EditorOptions, InlayHint, InlayHintProvider, IEditor, InlayHintStyle } from "arquill/editor/EditorFactory";
+export type { EditorOptions, InlayHint, InlayHintProvider, IEditor, InlayHintStyle } from "arquill/EditorFactory";
 
 declare global {
     interface Window {

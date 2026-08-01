@@ -91,6 +91,16 @@ export interface EditorOptions {
     className?: string;
 }
 
+/** A syntax highlighting range, in absolute document offsets. */
+export interface StyleRange {
+    /** Absolute document offset where the style starts. */
+    start: number;
+    /** Absolute document offset where the style ends, exclusive. */
+    end: number;
+    /** Inline CSS properties and/or a CSS class for the range. */
+    style: { styleClass?: string; style?: { [key: string]: string } };
+}
+
 /** Public interface for the editor instance returned by {@link createEditor}. */
 export interface IEditor {
     getTextView(): any;
@@ -102,4 +112,6 @@ export interface IEditor {
     setInlayHintProvider(provider: InlayHintProvider | null): void;
     getInlayHintProvider(): InlayHintProvider | null;
     setContentAssistProviders(providers: ContentAssistProvider[]): void;
+    /** Replaces the syntax highlighting ranges. Must be sorted by `start`. */
+    setStyleRanges(ranges: StyleRange[]): void;
 }

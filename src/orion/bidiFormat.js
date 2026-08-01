@@ -7,7 +7,8 @@
  * License v1.0 (http://www.eclipse.org/org/documents/edl-v10.html). 
  *
  *******************************************************************************/
-define (['orion/webui/littlelib'], function(lib) {
+import * as lib from './littlelib';
+
 
     var TextSegment = (function() {
         var TextSegment = function (obj) {
@@ -1307,39 +1308,12 @@ define (['orion/webui/littlelib'], function(lib) {
         element.dispatchEvent(event);
     }
 
-    return {
-        /**
-        * Returns the HTML representation of a given structured text
-        * @param text - the structured text
-        * @param type - could be one of filepath, url, email
-        * @param args - pass additional arguments to the handler. generally null.
-        * @param isRtl - indicates if the GUI is mirrored
-        * @param locale - the browser locale
-        */
-        getHtml: function (text, type, args, isRtl, locale) {
-            return getHandler(type).format(text, args, isRtl, true, locale);
-        },
-        /**
-        * Handle Structured text correct display for a given HTML element.
-        * @param element - the element  : should be of type div contenteditable=true
-        * @param type - could be one of filepath, url, email
-        * @param args - pass additional arguments to the handler. generally null.
-        * @param isRtl - indicates if the GUI is mirrored
-        * @param locale - the browser locale
-        */
-        attach: function (element, type, args, isRtl, locale) {
-            return attachElement(element, type, args, isRtl, locale);
-        },
-        /**
-         * Adds UCCs (Unicode Control Chars) to a given structured text for a correct display
-         * @param text - the structured text
-         * @param type - could be one of filepath, url, email
-         * @param args - pass additional arguments to the handler. generally null.
-         * @param isRtl - indicates if the GUI is mirrored
-         * @param locale - the browser locale
-         */
-        getString:  function (text, type, args, isRtl, locale) {
-			return getHandler(type).format(text, args, isRtl, false, locale);
-		}      
-    };
-});
+export function getHtml(text, type, args, isRtl, locale) {
+    return getHandler(type).format(text, args, isRtl, true, locale);
+}
+export function attach(element, type, args, isRtl, locale) {
+    return attachElement(element, type, args, isRtl, locale);
+}
+export function getString(text, type, args, isRtl, locale) {
+    return getHandler(type).format(text, args, isRtl, false, locale);
+}

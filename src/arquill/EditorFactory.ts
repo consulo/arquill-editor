@@ -7,7 +7,7 @@ import * as mEditorFeatures from "orion/editor/editorFeatures";
 import * as mContentAssist from "orion/editor/contentAssist";
 import * as mTextStyler from "orion/editor/textStyler";
 
-import type { EditorOptions, InlayHint, InlayHintProvider, ContentAssistProvider, IEditor } from "./api";
+import type { EditorOptions, InlayHint, InlayHintProvider, ContentAssistProvider, IEditor, StyleRange } from "./api";
 
 export type { EditorOptions, InlayHint, InlayHintProvider, ContentAssistProvider, IEditor, InlayHintStyle, CompletionProposal } from "./api";
 
@@ -205,8 +205,32 @@ export default function createEditor(options: EditorOptions): IEditor {
         }
     }
 
+    /** Index of the first style range that can still touch `offset`. Ranges are sorted by start. */
+    function _firstStyleRangeAt(offset: number): number {
+        let low = 0;
+        let high = _styleRanges.length;
+        while (low < high) {
+            const middle = (low + high) >>> 1;
+            if (_styleRanges[middle].end <= offset) { low = middle + 1; }
+            else { high = middle; }
+        }
+        return low;
+    }
+
     function _onLineStyle(e: any): void {
         if (!e.ranges) { e.ranges = []; }
+        if (_styleRanges.length) {
+            const lineEnd = e.lineStart + e.lineText.length;
+            for (let i = _firstStyleRangeAt(e.lineStart); i < _styleRanges.length; i++) {
+                const range = _styleRanges[i];
+                if (range.start >= lineEnd) { break; }
+                e.ranges.push({
+                    start: Math.max(range.start, e.lineStart),
+                    end: Math.min(range.end, lineEnd),
+                    style: range.style
+                });
+            }
+        }
         if (_whitespacesVisible) {
             _spliceWhitespace(e.ranges, e.lineText, e.lineStart, _spacePattern);
             _spliceWhitespace(e.ranges, e.lineText, e.lineStart, _tabPattern);
@@ -242,6 +266,7 @@ export default function createEditor(options: EditorOptions): IEditor {
     }
 
     let _inlayHintProvider: InlayHintProvider | null = null;
+    let _styleRanges: StyleRange[] = [];
 
     orionEditor.addEventListener("TextViewInstalled", () => {
         const ruler = orionEditor.getLineNumberRuler();
@@ -283,6 +308,12 @@ export default function createEditor(options: EditorOptions): IEditor {
 
     (editor as any).getInlayHintProvider = function(): InlayHintProvider | null {
         return _inlayHintProvider;
+    };
+
+    (editor as any).setStyleRanges = function(ranges: StyleRange[]): void {
+        _styleRanges = ranges || [];
+        const tv = orionEditor.getTextView();
+        if (tv) { tv.redraw(); }
     };
 
     (editor as any).setContentAssistProviders = function(providers: ContentAssistProvider[]): void {
