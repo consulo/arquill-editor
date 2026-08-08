@@ -1855,24 +1855,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         return rect;
     },
     /**
-     * Copies the selected text to the clipboard in plain text format.
-     * @returns {Boolean} <code>true</code> if the operation succeded.
-     * @since 10.0
-     */
-    copy: function() {
-        if (!this._clientDiv) { return false; }
-        return this._doCopy();
-    },
-    /**
-     * Moves the selected text to the clipboard in plain text format.
-     * @returns {Boolean} <code>true</code> if the operation succeded.
-     * @since 10.0
-     */
-    cut: function() {
-        if (!this._clientDiv) { return false; }
-        return this._doCut();
-    },
-    /**
      * Destroys the text view. 
      * <p>
      * Removes the view from the page and frees all resources created by the view.
@@ -2895,18 +2877,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         return this.dispatchEvent(blurEvent);
     },
     /**
-     * Replaces the selection with the text on the clipboard or, if there is no selection, inserts the text at the current caret offset.
-     * <p>
-     * If the single mode is on and the clipboard text contains more than one line, all lines will be concatenated.
-     * </p>
-     * @returns {Boolean} <code>true</code> if the operation succeded.
-     * @since 10.0
-     */
-    paste: function() {
-        if (!this._clientDiv) { return false; }
-        return this._doPaste();
-    },
-    /**
      * Redraws the entire view, including rulers.
      *
      * @see orion.editor.TextView#redrawLines
@@ -3604,23 +3574,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             }
         }
     },
-    _handleCopy: function (e) {
-        this._cancelCheckSelection();
-        if (this._ignoreEvent(e)) { return; }
-        if (this._ignoreCopy) { return; }
-        if (this._doCopy(e)) {
-            if (e.preventDefault) { e.preventDefault(); }
-            return false;
-        }
-    },
-    _handleCut: function (e) {
-        this._cancelCheckSelection();
-        if (this._ignoreEvent(e)) { return; }
-        if (this._doCut(e)) {
-            if (e.preventDefault) { e.preventDefault(); }
-            return false;
-        }
-    },
     _handleDataModified: function(e) {
         if (this._ignoreEvent(e)) { return; }
         this._startIME();
@@ -4028,7 +3981,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             if (e.button === 1) { button = 1; }
         }
 
-        // For middle click we always need getTime(). See _getClipboardText().
         var time = button !== 2 && e.timeStamp ? e.timeStamp : Date.now();
         var timeDiff = time - this._lastMouseTime;
         var deltaX = Math.abs(this._lastMouseX - e.clientX);
@@ -4365,27 +4317,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         this._scrollView(pixelX, pixelY);
         var newScroll = this._getScroll();
         if (oldScroll.x !== newScroll.x || oldScroll.y !== newScroll.y) {
-            if (e.preventDefault) { e.preventDefault(); }
-            return false;
-        }
-    },
-    _handlePaste: function (e) {
-        this._cancelCheckSelection();
-        if (this._ignoreEvent(e)) { return; }
-        if (this._ignorePaste) { return; }
-        if (this._doPaste(e)) {
-            if (util.isIE) {
-                /*
-                 * Bug in IE,  
-                 */
-                var that = this;
-                this._ignoreFocus = true;
-                var win = this._getWindow();
-                win.setTimeout(function() {
-                    that._updateDOMSelection();
-                    that._ignoreFocus = false;
-                }, 0);
-            }
             if (e.preventDefault) { e.preventDefault(); }
             return false;
         }
@@ -4921,13 +4852,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         });
         return this._modifyContent({text: text, selection: selections, _ignoreDOMSelection: true}, true);
     },
-    _doCopy: function (e) {
-        var text = this.getSelectionText();
-        if (text) {
-            return this._setClipboardText(text, e);
-        }
-        return true;
-    },
     _doCursorNext: function (args) {
         var that = this;
         var selections = this._getSelections();
@@ -4958,16 +4882,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             if (!args.select) { selection.collapse(); }
         });
         this._setSelection(selections, true);
-        return true;
-    },
-    _doCut: function (e) {
-        var text = this.getSelectionText();
-        if (text) {
-            if (!this._setClipboardText(text, e)) {
-                return false;
-            }
-            this._doContent("");
-        }
         return true;
     },
     _doDelete: function (args) {
@@ -5261,23 +5175,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         });
         this._setSelection(selections, true, true, function() {}, pageScroll, false, true);
         return true;
-    },
-    _doPaste: function(e) {
-        var that = this;
-        var result = this._getClipboardText(e, function(text) {
-            if (text.length) {
-                if (util.isLinux && that._lastMouseButton === 2) {
-                    var timeDiff = Date.now() - that._lastMouseTime;
-                    if (timeDiff <= that._clickTime) {
-                        that._setSelectionTo(that._lastMouseX, that._lastMouseY, true);
-                    }
-                }
-                var selections = that._getSelections();
-                var delimiter = that._singleMode ? "" : that._model.getLineDelimiter();
-                that._doContent(selections.length > 1 && selections.length === text.length ? text : text.join(delimiter));
-            }
-        });
-        return result !== null;
     },
     _doScroll: function (args) {
         var type = args.type;
@@ -5661,10 +5558,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             "enterNoCursor": {defaultHandler: function(data) {return that._doEnter(merge(data,{noCursor:true}));}, actionDescription: {name: messages.enterNoCursor}}, //$NON-NLS-1$
             "escape": {defaultHandler: function(data) {return that._doEscape(merge(data,{}));}, actionDescription: {name: messages.escape}}, //$NON-NLS-1$
             "selectAll": {defaultHandler: function(data) {return that._doSelectAll(merge(data,{}));}, actionDescription: {name: messages.selectAll}}, //$NON-NLS-1$
-            "copy": {defaultHandler: function(data) {return that._doCopy(merge(data,{}));}, actionDescription: {name: messages.copy}}, //$NON-NLS-1$
-            "cut": {defaultHandler: function(data) {return that._doCut(merge(data,{}));}, actionDescription: {name: messages.cut}}, //$NON-NLS-1$
-            "paste": {defaultHandler: function(data) {return that._doPaste(merge(data,{}));}, actionDescription: {name: messages.paste}}, //$NON-NLS-1$
-            
             "uppercase": {defaultHandler: function(data) {return that._doCase(merge(data,{type: "upper"}));}, actionDescription: {name: messages.uppercase}}, //$NON-NLS-1$ //$NON-NLS-1$
             "lowercase": {defaultHandler: function(data) {return that._doCase(merge(data,{type: "lower"}));}, actionDescription: {name: messages.lowercase}}, //$NON-NLS-1$ //$NON-NLS-1$
             "capitalize": {defaultHandler: function(data) {return that._doCase(merge(data,{unit: "word", type: "capitalize"}));}, actionDescription: {name: messages.capitalize}}, //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-1$
@@ -5973,7 +5866,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
 
         /* Destroy DOM */
         this._domSelection = null;
-        this._clipboardDiv = null;
         this._rootDiv = null;
         this._scrollDiv = null;
         this._viewDiv = null;
@@ -6087,83 +5979,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         var viewPad = this._getViewPadding();
         var innerRightWidth = this._getInnerRightWidth();
         return Math.max(0, this._viewDiv.clientWidth - viewPad.left - viewPad.right - innerRightWidth);
-    },
-    _getClipboardText: function (evt, handler) {
-        // IE
-        var win = this._getWindow();
-        var clipboardData = win.clipboardData;
-        // WebKit and Firefox > 21
-        if (!clipboardData && evt) {
-            clipboardData = evt.clipboardData;
-        }
-        function convert(wholeText) {
-            var clipboardText = [];
-            convertDelimiter(wholeText, function(t) {clipboardText.push(t);}, null);
-            if (handler) { handler(clipboardText); }
-            return clipboardText;
-        }
-        if (clipboardData) {
-            return convert(clipboardData.getData(util.isIE ? "Text" : "text/plain")); //$NON-NLS-1$"//$NON-NLS-2$
-        }
-        if (util.isElectron && !evt) {
-            return convert(window.__electron.clipboard.readText());
-        }
-        if (util.isFirefox) {
-            this._ignoreFocus = true;
-            var clipboardDiv = this._clipboardDiv;
-            var doc = this._rootDiv.ownerDocument;
-            if (!clipboardDiv) {
-                clipboardDiv = util.createElement(doc, "div"); //$NON-NLS-1$
-                this._clipboardDiv = clipboardDiv;
-                clipboardDiv.style.position = "fixed"; //$NON-NLS-1$
-                clipboardDiv.style.whiteSpace = "pre"; //$NON-NLS-1$
-                clipboardDiv.style.left = "-1000px"; //$NON-NLS-1$
-                this._rootDiv.appendChild(clipboardDiv);
-            }
-            lib.setSafeInnerHTML(clipboardDiv, "<pre contenteditable=''></pre>");
-            clipboardDiv.firstChild.focus();
-            var that = this;
-            var _getText = function() {
-                var noteText = that._getTextFromElement(clipboardDiv);
-                lib.setSafeInnerHTML(clipboardDiv, "");
-                return convert(noteText);
-            };
-            
-            /* Try execCommand first. Works on firefox with clipboard permission. */
-            var result = false;
-            this._ignorePaste = true;
-
-            /* Do not try execCommand if middle-click is used, because if we do, we get the clipboard text, not the primary selection text. */
-            if (!util.isLinux || this._lastMouseButton !== 2) {
-                try {
-                    result = doc.execCommand("paste", false, null); //$NON-NLS-1$
-                } catch (ex) {
-                    /* Firefox can throw even when execCommand() works, see bug 362835. */
-                    result = clipboardDiv.childNodes.length > 1 || clipboardDiv.firstChild && clipboardDiv.firstChild.childNodes.length > 0;
-                }
-            }
-            this._ignorePaste = false;
-            if (!result) {
-                /* Try native paste in DOM, works for firefox during the paste event. */
-                if (evt) {
-                    win.setTimeout(function() {
-                        that.focus();
-                        _getText();
-                        that._ignoreFocus = false;
-                    }, 0);
-                    return null;
-                } else {
-                    /* no event and no clipboard permission, paste can't be performed */
-                    this.focus();
-                    this._ignoreFocus = false;
-                    return "";
-                }
-            }
-            this.focus();
-            this._ignoreFocus = false;
-            return _getText();
-        }
-        return "";
     },
     _getDOMText: function(child, offsetNode) {
         return child._line.getText(offsetNode);
@@ -6386,9 +6201,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             handlers.push({target: doc, type: "keyup", handler: function(e) { return that._handleDocKeyUp(e ? e : win.event);}}); //$NON-NLS-1$
         }
         handlers.push({target: clientDiv, type: "contextmenu", handler: function(e) { return that._handleContextMenu(e ? e : win.event);}}); //$NON-NLS-1$
-        handlers.push({target: clientDiv, type: "copy", handler: function(e) { return that._handleCopy(e ? e : win.event);}}); //$NON-NLS-1$
-        handlers.push({target: clientDiv, type: "cut", handler: function(e) { return that._handleCut(e ? e : win.event);}}); //$NON-NLS-1$
-        handlers.push({target: clientDiv, type: "paste", handler: function(e) { return that._handlePaste(e ? e : win.event);}}); //$NON-NLS-1$
         handlers.push({target: doc, type: "selectionchange", handler: function(e) { return that._handleSelectionChange(e ? e : win.event); }}); //$NON-NLS-1$
         if (util.isIOS || util.isAndroid) {
             handlers.push({target: clientDiv, type: "touchstart", handler: function(e) { return that._handleTouchStart(e ? e : win.event); }}); //$NON-NLS-1$
@@ -6842,79 +6654,6 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         var viewDiv = this._viewDiv;
         if (pixelX) { viewDiv.scrollLeft += pixelX; }
         if (pixelY) { viewDiv.scrollTop += pixelY; }
-    },
-    _setClipboardText: function (text, evt) {
-        if (util.isElectron && !evt) {
-            window.__electron.clipboard.writeText(text);
-            return true;
-        }
-        var clipboardText;
-        // IE
-        var win = this._getWindow();
-        var clipboardData = win.clipboardData;
-        // WebKit and Firefox > 21
-        if (!clipboardData && evt) {
-            clipboardData = evt.clipboardData;
-        }
-        if (clipboardData) {
-            clipboardText = [];
-            convertDelimiter(text, function(t) {clipboardText.push(t);}, function() {clipboardText.push(util.platformDelimiter);});
-            /*
-            * Note that setData() succeeds on Firefox > 21 and WebKit, but the return value is not a boolean like IE.
-            */
-            var success = clipboardData.setData(util.isIE ? "Text" : "text/plain", clipboardText.join("")); //$NON-NLS-1$ //$NON-NLS-2$
-            if (success || (evt && (util.isFirefox > 21 || util.isWebkit))) {
-                return true;
-            }
-            if (!evt) return false;
-        }
-        var doc = this._parent.ownerDocument;
-        var child = util.createElement(doc, "pre"); //$NON-NLS-1$
-        child.style.position = "fixed"; //$NON-NLS-1$
-        child.style.left = "-1000px"; //$NON-NLS-1$
-        convertDelimiter(text, 
-            function(t) {
-                child.appendChild(doc.createTextNode(t));
-            }, 
-            function() {
-                child.appendChild(util.createElement(doc, "br")); //$NON-NLS-1$
-            }
-        );
-        child.appendChild(doc.createTextNode(" ")); //$NON-NLS-1$
-        this._clientDiv.appendChild(child);
-        var range = doc.createRange();
-        range.setStart(child.firstChild, 0);
-        range.setEndBefore(child.lastChild);
-        var sel = win.getSelection();
-        if (sel.rangeCount > 0) { sel.removeAllRanges(); }
-        sel.addRange(range);
-        var that = this;
-        /** @ignore */
-        var cleanup = function() {
-            if (child && child.parentNode === that._clientDiv) {
-                that._clientDiv.removeChild(child);
-            }
-            that._updateDOMSelection();
-        };
-        var result = false;
-        /* 
-        * Try execCommand first, it works on firefox with clipboard permission,
-        * chrome 5, safari 4.
-        */
-        this._ignoreCopy = true;
-        try {
-            result = doc.execCommand("copy", false, null); //$NON-NLS-1$
-        } catch (e) {}
-        this._ignoreCopy = false;
-        if (!result) {
-            if (evt) {
-                win.setTimeout(cleanup, 0);
-                return false;
-            }
-        }
-        /* no event and no permission, copy cannot be done */
-        cleanup();
-        return true;
     },
     _setGrab: function (target) {
         if (target === this._grabControl) { return; }
