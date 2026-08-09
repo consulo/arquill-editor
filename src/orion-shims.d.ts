@@ -67,3 +67,19 @@ declare module "orion/editor/contentAssist" {
 }
 
 declare module "orion/editor/textStyler" {}
+
+declare module "orion/editor/annotations" {
+    /** Markup of the folding anchors, handed over by whoever embeds the editor. */
+    export interface FoldingAnchors {
+        /** Head of an open region, on the row it begins on. */
+        expanded: string;
+        /** Anchor of a folded region, on the row its placeholder stands on. */
+        collapsed: string;
+        /** Foot of an open region, on the row it ends on - the lower end of the bracket. */
+        expandedBottom: string;
+    }
+
+    export class FoldingAnnotation {
+        static anchors: FoldingAnchors | null;
+    }
+}

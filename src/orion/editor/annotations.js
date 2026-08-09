@@ -207,10 +207,42 @@ class AnnotationType {
  * @name orion.editor.FoldingAnnotation
  */
 class FoldingAnnotation {
-    _expandedHTML = "<div class='annotationHTML expanded'></div>"; //$NON-NLS-0$
+    /**
+     * Markup of the anchors, when the host draws them itself. The editor owns no icons of its own - whoever
+     * embeds it hands over the markup, which is why this holds html rather than a class name or a url: the
+     * host may need a live element in the ruler to keep it in step with a theme of its own.
+     * <p>
+     * An open region has two anchors: the head, on the row it begins on, and the foot, on the row it ends on -
+     * the two read as a bracket around what the region holds. A collapsed region is one row and has one.
+     *
+     * @type {?{expanded: string, collapsed: string, expandedBottom: string}}
+     */
+    static anchors = null;
+
     _expandedStyle = {styleClass: "annotation expanded"}; //$NON-NLS-0$
-    _collapsedHTML = "<div class='annotationHTML collapsed'></div>"; //$NON-NLS-0$
     _collapsedStyle = {styleClass: "annotation collapsed"}; //$NON-NLS-0$
+
+    get _expandedHTML() {
+        const anchors = FoldingAnnotation.anchors;
+        return anchors ? anchors.expanded : "<div class='annotationHTML expanded'></div>"; //$NON-NLS-0$
+    }
+
+    get _collapsedHTML() {
+        const anchors = FoldingAnnotation.anchors;
+        return anchors ? anchors.collapsed : "<div class='annotationHTML collapsed'></div>"; //$NON-NLS-0$
+    }
+
+    /**
+     * Markup of the foot of an open region - the lower end of the bracket, drawn on the row the region ends on.
+     * The ruler carries one annotation per region, on the row it begins on, so the foot is put there by whoever
+     * draws the ruler; this only answers with what it is drawn as.
+     */
+    get _expandedBottomHTML() {
+        const anchors = FoldingAnnotation.anchors;
+        return anchors && anchors.expandedBottom
+            ? anchors.expandedBottom
+            : "<div class='annotationHTML expandedBottom'></div>"; //$NON-NLS-0$
+    }
 
     constructor(start, end, projectionModel) {
         this.start = start;
