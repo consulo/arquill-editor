@@ -5597,8 +5597,8 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         ruler.node = div;
         div.rulerChanged = true;
         div.style.position = "relative"; //$NON-NLS-1$
-        div.style.cssFloat = "left"; //$NON-NLS-1$
-        div.style.styleFloat = "left"; //$NON-NLS-1$
+        div.style.cssFloat = this._mirrored && rulerParent === this._leftDiv ? "right" : "left"; //$NON-NLS-1$ //$NON-NLS-2$
+        div.style.styleFloat = div.style.cssFloat;
         div.style.outline = "none"; //$NON-NLS-1$
         if (index === undefined || index < 0 || index >= rulerParent.children.length) {
             rulerParent.appendChild(div);
@@ -5803,6 +5803,7 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             expandTab: {value: false, update: null},
             singleMode: {value: false, update: this._setSingleMode},
             noScroll: {value: false, update: this._setNoScroll},
+            mirrored: {value: false, update: this._setMirrored},
             overwriteMode: { value: false, update: this._setOverwriteMode },
             blockCursorVisible: { value: false, update: this._setBlockCursor},
             marginOffset: {value: 0, update: this._setMarginOffset},
@@ -6132,7 +6133,11 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             this._cancelAnimation();
         }
         var viewDiv = this._viewDiv;
-        return {x: viewDiv.scrollLeft, y: viewDiv.scrollTop};
+        var x = viewDiv.scrollLeft;
+        if (this._mirrored) {
+            x += viewDiv.scrollWidth - viewDiv.clientWidth;
+        }
+        return {x: x, y: viewDiv.scrollTop};
     },
     _getSelection: function () {
         return (Array.isArray(this._selection) ? this._selection[0] : this._selection).clone();
@@ -6586,7 +6591,7 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         this._resetLineHeight();
         this._setSelection(new Selection(0, 0, false), false, false);
         if (this._viewDiv) {
-            this._viewDiv.scrollLeft = 0;
+            this._setScrollX(0);
             this._viewDiv.scrollTop = 0;
         }
         var clientDiv = this._clientDiv;
@@ -6891,6 +6896,47 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
         this._noScroll = noScroll;
         this._updateOverflow();
         this._updateStyle(init);
+    },
+    _setMirrored: function (mirrored, init) {
+        var scroll = this._viewDiv ? this._getScroll(false) : null;
+        this._mirrored = !!mirrored;
+        var leftDiv = this._leftDiv, rightDiv = this._rightDiv, viewDiv = this._viewDiv, scrollDiv = this._scrollDiv;
+        if (leftDiv) {
+            leftDiv.style.left = this._mirrored ? "auto" : "0px"; //$NON-NLS-1$ //$NON-NLS-2$
+            leftDiv.style.right = this._mirrored ? "0px" : "auto"; //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        if (leftDiv) {
+            for (var child = leftDiv.firstChild; child; child = child.nextSibling) {
+                if (child._ruler) {
+                    child.style.cssFloat = this._mirrored ? "right" : "left"; //$NON-NLS-1$ //$NON-NLS-2$
+                    child.style.styleFloat = child.style.cssFloat;
+                }
+            }
+        }
+        if (rightDiv) {
+            rightDiv.style.left = this._mirrored ? "0px" : "auto"; //$NON-NLS-1$ //$NON-NLS-2$
+            rightDiv.style.right = this._mirrored ? "auto" : "0px"; //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        if (viewDiv) {
+            viewDiv.style.direction = this._mirrored ? "rtl" : ""; //$NON-NLS-1$
+        }
+        if (scrollDiv) {
+            scrollDiv.style.direction = this._mirrored ? "ltr" : ""; //$NON-NLS-1$
+        }
+        if (scroll) {
+            this._setScrollX(scroll.x);
+        }
+        if (!init) {
+            this._queueUpdate();
+        }
+    },
+    _setScrollX: function (x) {
+        var viewDiv = this._viewDiv;
+        if (this._mirrored) {
+            viewDiv.scrollLeft = x - (viewDiv.scrollWidth - viewDiv.clientWidth);
+        } else {
+            viewDiv.scrollLeft = x;
+        }
     },
     _setTabSize: function (tabSize, init) {
         this._tabSize = tabSize;
@@ -7352,8 +7398,8 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
                 var rightRect = this._rightDiv.getBoundingClientRect();
                 rightWidth = rightRect.right - rightRect.left;
             }
-            viewDiv.style.left = leftWidth + "px"; //$NON-NLS-1$
-            viewDiv.style.right = rightWidth + "px"; //$NON-NLS-1$
+            viewDiv.style.left = (this._mirrored ? rightWidth : leftWidth) + "px"; //$NON-NLS-1$
+            viewDiv.style.right = (this._mirrored ? leftWidth : rightWidth) + "px"; //$NON-NLS-1$
 
             /* Need to set the height first in order for the width to consider the vertical scrollbar */
             var scrollDiv = this._scrollDiv;
@@ -7412,7 +7458,11 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             */
             scrollWidth = width;
             if ((!util.isIE || util.isIE >= 9) && this._maxLineWidth > clientWidth) { width += viewPad.right + viewPad.left; }
+            var mirroredScrollX = this._mirrored ? this._getScroll(false).x : 0;
             scrollDiv.style.width = width + "px"; //$NON-NLS-1$
+            if (this._mirrored) {
+                this._setScrollX(mirroredScrollX);
+            }
             if (this._clipScrollDiv) {
                 this._clipScrollDiv.style.width = width + "px"; //$NON-NLS-1$
             }
@@ -7421,7 +7471,7 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
 
             var innerRightDiv = this._innerRightDiv;
             if (innerRightDiv) {
-                innerRightDiv.style.right = rightWidth + (viewDiv.style.overflowY === "scroll" ? this._metrics.scrollWidth : 0) + "px"; //$NON-NLS-1$ //$NON-NLS-1$
+                innerRightDiv.style.right = this._mirrored ? leftWidth + "px" : rightWidth + (viewDiv.style.overflowY === "scroll" ? this._metrics.scrollWidth : 0) + "px"; //$NON-NLS-1$ //$NON-NLS-1$
                 innerRightDiv.style.bottom = (viewDiv.style.overflowX === "scroll" ? scrollbarWidth : 0) + "px"; //$NON-NLS-1$ //$NON-NLS-1$
             }
         }
@@ -7440,19 +7490,24 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             this._hScrollDiv.style.top = (clientHeight - 9) + "px"; //$NON-NLS-1$
             this._hScrollDiv.style.width = thumbWidth + "px"; //$NON-NLS-1$
         }
+        var textLeft = leftWidth;
+        if (this._mirrored) {
+            textLeft = this._rightDiv ? this._rightDiv.getBoundingClientRect().width : 0;
+            if (viewDiv.style.overflowY === "scroll") { textLeft += this._metrics.scrollWidth; } //$NON-NLS-1$
+        }
         var left = _scroll.x;	
         var clipDiv = this._clipDiv;
         var overlayDiv = this._overlayDiv;
         var marginDiv = this._marginDiv;
         var clipLeft, clipTop;
         if (marginDiv) {
-            marginDiv.style.left = (-left + leftWidth + this._metrics.marginWidth + viewPad.left) + "px"; //$NON-NLS-1$
+            marginDiv.style.left = (-left + textLeft + this._metrics.marginWidth + viewPad.left) + "px"; //$NON-NLS-1$
             marginDiv.style.bottom = (viewDiv.style.overflowX === "scroll" ? scrollbarWidth : 0) + "px"; //$NON-NLS-1$ //$NON-NLS-1$
         }
         if (clipDiv) {
             clipDiv.scrollLeft = left;
             clipDiv.scrollTop = 0;
-            clipLeft = leftWidth + viewPad.left;
+            clipLeft = textLeft + viewPad.left;
             clipTop = viewPad.top;
             var clipWidth = clientWidth;
             var clipHeight = clientHeight;
@@ -7498,9 +7553,9 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             if (_scroll.y + clientHeight === scrollHeight) { clipBottom += viewPad.bottom; }
             clientDiv.style.clip = "rect(" + clipTop + "px," + clipRight + "px," + clipBottom + "px," + clipLeft + "px)"; //$NON-NLS-4$ //$NON-NLS-3$ //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-5$
             if (document.dir == "rtl") { /* ACGC */
-                clientDiv.style.right = (-left + leftWidth + viewPad.left) + "px"; //$NON-NLS-1$
+                clientDiv.style.right = (-left + textLeft + viewPad.left) + "px"; //$NON-NLS-1$
             }else{
-                clientDiv.style.left = (-left + leftWidth + viewPad.left) + "px"; //$NON-NLS-1$	  
+                clientDiv.style.left = (-left + textLeft + viewPad.left) + "px"; //$NON-NLS-1$	  
             }
             clientDiv.style.width = (this._wrapMode || util.isWebkit ? scrollWidth : clientWidth + left) + "px"; //$NON-NLS-1$
             if (!hScrollOnly) {
