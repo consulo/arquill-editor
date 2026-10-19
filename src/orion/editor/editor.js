@@ -341,6 +341,7 @@ class Editor extends BaseEditor {
         this._annotationStyler = null;
         this._annotationModel = null;
         this._annotationRuler = null;
+        this._marksRuler = null;
         this._lineNumberRuler = null;
         this._overviewRuler = null;
         this._zoomRuler = null;
@@ -374,6 +375,16 @@ class Editor extends BaseEditor {
      */
     getAnnotationRuler() {
         return this._annotationRuler;
+    }
+
+    /**
+     * Returns the marks ruler of the editor, the column after the line numbers which the host fills with its own
+     * gutter icons.
+     *
+     * @returns {orion.editor.AnnotationRuler}
+     */
+    getMarksRuler() {
+        return this._marksRuler;
     }
 
     /**
@@ -588,6 +599,20 @@ class Editor extends BaseEditor {
             textView.addRuler(this._annotationRuler, 0);
         } else {
             textView.removeRuler(this._annotationRuler);
+        }
+        if (this._marksRulerInstalled) {
+            this._setMarksRulerVisible(visible);
+        }
+    }
+
+    _setMarksRulerVisible(visible) {
+        var marksRuler = this._marksRuler;
+        if (!marksRuler) { return; }
+        var textView = this._textView;
+        textView.removeRuler(marksRuler);
+        if (visible) {
+            var index = (this._annotationRulerVisible ? 1 : 0) + (this._lineNumberRulerVisible ? 1 : 0);
+            textView.addRuler(marksRuler, index);
         }
     }
 
@@ -1173,6 +1198,7 @@ class Editor extends BaseEditor {
             }
 
             var rulers = this._annotationFactory.createAnnotationRulers(this._annotationModel);
+            this._marksRuler = rulers.marksRuler || null;
             var ruler = this._annotationRuler = rulers.annotationRuler;
             if (ruler) {
                 ruler.onDblClick = rulerOnDblClick;
@@ -1235,6 +1261,11 @@ class Editor extends BaseEditor {
             this.setLineNumberRulerVisible(this._lineNumberRulerVisible || this._lineNumberRulerVisible === undefined, true);
         }
 
+        if (this._marksRuler && this._annotationRulerVisible) {
+            this._textView.addRuler(this._marksRuler);
+        }
+        this._marksRulerInstalled = true;
+
         if (this._foldingRulerFactory) {
             this._foldingRuler = this._foldingRulerFactory.createFoldingRuler(this._annotationModel);
             this._foldingRuler.addAnnotationType(AT.ANNOTATION_FOLDING);
@@ -1267,7 +1298,8 @@ class Editor extends BaseEditor {
         }
         this._textView = this._undoStack = this._textDND = this._contentAssist =
             this._listener = this._annotationModel = this._annotationStyler =
-            this._annotationRuler = this._overviewRuler = this._zoomRuler = this._lineNumberRuler =
+            this._marksRulerInstalled = false;
+            this._annotationRuler = this._marksRuler = this._overviewRuler = this._zoomRuler = this._lineNumberRuler =
             this._foldingRuler = this._currentLineAnnotations = this._title = null;
         this._dirty = false;
         this._foldingRulerVisible = this._overviewRulerVisible = this._zoomRulerVisible =

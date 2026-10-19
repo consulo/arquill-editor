@@ -70,7 +70,8 @@ class AnnotationFactory {
     createAnnotationRulers(annotationModel) {
         var annotationRuler = new mRulers.AnnotationRuler(annotationModel, "left", {styleClass: "ruler annotations"}); //$NON-NLS-1$ //$NON-NLS-0$
         var overviewRuler = new mRulers.OverviewRuler(annotationModel, "right", {styleClass: "ruler overview"}); //$NON-NLS-1$ //$NON-NLS-0$
-        return {annotationRuler: annotationRuler, overviewRuler: overviewRuler};
+        var marksRuler = new mRulers.AnnotationRuler(annotationModel, "left", {styleClass: "ruler marks"}); //$NON-NLS-1$ //$NON-NLS-0$
+        return {annotationRuler: annotationRuler, overviewRuler: overviewRuler, marksRuler: marksRuler};
     }
 }
 
