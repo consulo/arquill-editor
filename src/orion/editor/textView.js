@@ -4340,18 +4340,20 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
             /*
             * The calculated metrics may be out of date when the zoom level changes.
             */
-            var metrics = this._calculateMetrics();
-            if (!compare(metrics, this._metrics)) {
-                if (this._metrics.invalid && !metrics.invalid) {
-                    this._updateStyle(false, metrics);
-                } else {
-                    if (this._variableLineHeight) {
-                        this._variableLineHeight = false;
-                        this._resetLineHeight();
+            if (this._metrics.invalid || this._metricsPixelRatio !== this._getWindow().devicePixelRatio) {
+                var metrics = this._calculateMetrics();
+                if (!compare(metrics, this._metrics)) {
+                    if (this._metrics.invalid && !metrics.invalid) {
+                        this._updateStyle(false, metrics);
+                    } else {
+                        if (this._variableLineHeight) {
+                            this._variableLineHeight = false;
+                            this._resetLineHeight();
+                        }
+                        this._metrics = metrics;
                     }
-                    this._metrics = metrics;
+                    queue = true;
                 }
-                queue = true;
             }
 
             if (queue) {
@@ -5331,6 +5333,7 @@ TextView.prototype = /** @lends orion.editor.TextView.prototype */ {
     _calculateMetrics: function() {
         var _parent = this._clientDiv;
         var doc = _parent.ownerDocument;
+        this._metricsPixelRatio = this._getWindow().devicePixelRatio;
         var c = " "; //$NON-NLS-1$
         var line = util.createElement(doc, "div"); //$NON-NLS-1$
         line.style.lineHeight = "normal"; //$NON-NLS-1$
